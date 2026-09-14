@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "DEADRUN",
+    "slug": "deadrun-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMotionUsageDescription": "AR 전투 뷰에서 기기 방향을 추적하는 데 사용합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#14171C",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "달리는 동안 좀비와의 거리·추격 판정에 위치를 사용합니다. (앱 사용 중에만)"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AR 전투 뷰에서 카메라 영상 위에 좀비를 표시하는 데 사용합니다."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "AR 전투 뷰에서 기기 방향을 추적하는 데 사용합니다."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

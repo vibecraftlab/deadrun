@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEADRUN 지도 관리자</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --bg:#14171c; --panel:#1e242e; --line:#2f3646; --txt:#dfe3e8; --dim:#9aa4b5;
+    --accent:#3d8bff; --ok:#3ddc6a; --warn:#f0b232; --bad:#ff4b3a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font:14px/1.5 -apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif; }
+  #app { display:grid; grid-template-columns:400px 1fr; height:100vh; }
+  #side { background:var(--panel); border-right:1px solid var(--line);
+          overflow-y:auto; padding:18px; }
+  #map { height:100vh; background:#0d1117; }
+  h1 { font-size:16px; margin:0 0 4px; letter-spacing:1px; }
+  h1 span { color:var(--bad); font-weight:900; }
+  .sub { color:var(--dim); font-size:12px; margin-bottom:18px; }
+  .card { background:#171c25; border:1px solid var(--line); border-radius:10px;
+          padding:14px; margin-bottom:14px; }
+  .card h2 { font-size:13px; margin:0 0 10px; color:var(--accent); letter-spacing:.5px; }
+  label { display:block; font-size:12px; color:var(--dim); margin:10px 0 4px; }
+  select, input[type=text], input[type=number] {
+    width:100%; background:#0f131a; color:var(--txt); border:1px solid var(--line);
+    border-radius:7px; padding:8px 10px; font-size:13px; font-family:inherit;
+  }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px;
+           padding:11px 14px; font-size:14px; font-weight:700; cursor:pointer;
+           font-family:inherit; width:100%; }
+  button.ghost { background:#2a3140; }
+  button.danger { background:var(--bad); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .chk { display:flex; align-items:center; gap:8px; margin:10px 0; color:var(--dim); font-size:13px; }
+  .chk input { width:16px; height:16px; accent-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  td { padding:3px 0; }
+  td:last-child { text-align:right; color:var(--txt); font-variant-numeric:tabular-nums; }
+  td:first-child { color:var(--dim); }
+  .bar { height:8px; background:#0f131a; border-radius:4px; overflow:hidden; margin:10px 0 6px; }
+  .bar > i { display:block; height:100%; background:var(--accent); width:0; transition:width .3s; }
+  pre { background:#0f131a; border:1px solid var(--line); border-radius:7px; padding:10px;
+        font-size:11px; line-height:1.45; max-height:200px; overflow:auto; margin:8px 0 0;
+        white-space:pre-wrap; word-break:break-all; color:var(--dim); }
+  .hint { font-size:11.5px; color:var(--dim); margin-top:8px; line-height:1.6; }
+  .hint b { color:var(--txt); }
+  code { background:#0f131a; padding:1px 5px; border-radius:4px; font-size:11.5px; color:var(--ok); }
+  .badge { display:inline-block; padding:2px 7px; border-radius:5px; font-size:11px; font-weight:700; }
+  .b-run { background:#1b3358; color:#6ba7ff; }
+  .b-done { background:#14361f; color:var(--ok); }
+  .b-err { background:#3a1010; color:#ff8a7a; }
+  .b-stop { background:#3a2f10; color:var(--warn); }
+  .leaflet-container { background:#0d1117; }
+  .tile-lbl { color:#6ba7ff; font-size:10px; text-shadow:0 0 3px #000; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <h1><span>DEADRUN</span> 지도 관리자</h1>
+    <div class="sub">OSM에서 지도를 받아 타일로 굽고, 앱이 쓸 수 있게 내보냅니다.</div>
+
+    <!-- 1. 범위 -->
+    <div class="card">
+      <h2>1 · 어디를 구울까</h2>
+      <label>미리 정해진 범위</label>
+      <select id="preset"></select>
+      <div class="hint" id="presetNote"></div>
+
+      <label>직접 지정 (지도에서 드래그해도 됩니다)</label>
+      <div class="row">
+        <input id="west" type="number" step="0.01" placeholder="서경도">
+        <input id="south" type="number" step="0.01" placeholder="남위도">
+      </div>
+      <div class="row" style="margin-top:6px">
+        <input id="east" type="number" step="0.01" placeholder="동경도">
+        <input id="north" type="number" step="0.01" placeholder="북위도">
+      </div>
+
+      <label>타일 크기</label>
+      <select id="zoom">
+        <option value="12">z12 — 7.8km (타일 적음, 한 장이 큼)</option>
+        <option value="13" selected>z13 — 3.9km (권장)</option>
+        <option value="14">z14 — 1.9km (세밀, 파일 많음)</option>
+      </select>
+
+      <button class="ghost" id="btnPlan" style="margin-top:12px">규모 계산하기</button>
+      <div id="planOut"></div>
+    </div>
+
+    <!-- 2. 굽기 -->
+    <div class="card">
+      <h2>2 · 굽기</h2>
+      <label>버전 이름</label>
+      <input id="version" type="text" value="v1">
+      <div class="hint">
+        갱신할 때는 <b>반드시 새 이름</b>(v2, v3…)을 쓰세요.
+        같은 이름으로 덮어쓰면 기기에 캐시된 옛 파일이 계속 쓰입니다.
+      </div>
+
+      <div class="chk"><input type="checkbox" id="buildings" checked><span>건물도 함께 받기 (용량·시간 약 2배)</span></div>
+      <div class="chk"><input type="checkbox" id="resume" checked><span>이미 구운 타일은 건너뛰기</span></div>
+
+      <button id="btnBake" style="margin-top:6px">굽기 시작</button>
+      <button class="danger" id="btnStop" style="margin-top:8px; display:none">중지</button>
+
+      <div id="progress" style="display:none">
+        <div class="bar"><i id="barFill"></i></div>
+        <table id="jobStat"></table>
+        <pre id="jobLog"></pre>
+      </div>
+    </div>
+
+    <!-- 3. 결과 -->
+    <div class="card">
+      <h2>3 · 결과 파일</h2>
+      <button class="ghost" id="btnRefresh">새로고침</button>
+      <table id="outStat" style="margin-top:10px"></table>
+      <div class="hint" id="gitHint"></div>
+    </div>
+
+    <!-- 4. 앱 연결 -->
+    <div class="card">
+      <h2>4 · 앱에 연결</h2>
+      <div class="hint" id="appHint"></div>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const kb = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(0) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+
+// ── 지도 ────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true }).setView([36.5, 127.8], 7);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+let bboxLayer = null, tileLayer = L.layerGroup().addTo(map), previewLayer = L.layerGroup().addTo(map);
+
+function drawBBox(b) {
+  if (bboxLayer) map.removeLayer(bboxLayer);
+  bboxLayer = L.rectangle([[b.south, b.west], [b.north, b.east]],
+    { color: '#3d8bff', weight: 2, fillOpacity: .08 }).addTo(map);
+  map.fitBounds(bboxLayer.getBounds(), { padding: [30, 30] });
+}
+function readBBox() {
+  return { west:+$('west').value, south:+$('south').value, east:+$('east').value, north:+$('north').value };
+}
+function writeBBox(b) {
+  $('west').value = b.west.toFixed(4); $('south').value = b.south.toFixed(4);
+  $('east').value = b.east.toFixed(4); $('north').value = b.north.toFixed(4);
+}
+
+// 드래그로 범위 선택 (Shift + 드래그)
+let dragStart = null;
+map.on('mousedown', e => { if (e.originalEvent.shiftKey) { dragStart = e.latlng; map.dragging.disable(); } });
+map.on('mousemove', e => {
+  if (!dragStart) return;
+  const b = { west: Math.min(dragStart.lng, e.latlng.lng), east: Math.max(dragStart.lng, e.latlng.lng),
+              south: Math.min(dragStart.lat, e.latlng.lat), north: Math.max(dragStart.lat, e.latlng.lat) };
+  if (bboxLayer) map.removeLayer(bboxLayer);
+  bboxLayer = L.rectangle([[b.south,b.west],[b.north,b.east]], { color:'#3d8bff', weight:2, fillOpacity:.08 }).addTo(map);
+  writeBBox(b);
+});
+map.on('mouseup', () => { if (dragStart) { dragStart = null; map.dragging.enable(); plan(); } });
+
+// ── 프리셋 ──────────────────────────────────────────────
+let PRESETS = [];
+fetch('/api/presets').then(r => r.json()).then(d => {
+  PRESETS = d.presets;
+  $('preset').innerHTML = '<option value="">— 직접 지정 —</option>' +
+    PRESETS.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
+  $('preset').value = 'gangnam';
+  applyPreset();
+});
+$('preset').onchange = applyPreset;
+function applyPreset() {
+  const p = PRESETS.find(x => x.id === $('preset').value);
+  $('presetNote').textContent = p ? p.note : '지도에서 Shift를 누른 채 드래그해 범위를 그리세요.';
+  if (!p) return;
+  writeBBox(p.bbox); drawBBox(p.bbox); plan();
+}
+
+// ── 규모 계산 ───────────────────────────────────────────
+$('btnPlan').onclick = plan;
+async function plan() {
+  const bbox = readBBox();
+  const zoom = +$('zoom').value;
+  drawBBox(bbox);
+  const r = await fetch('/api/plan', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ bbox, zoom }) }).then(r => r.json());
+  if (r.error) { $('planOut').innerHTML = `<div class="hint" style="color:var(--bad)">${r.error}</div>`; return; }
+  const hours = (r.tiles * 4.5 / 3600);
+  const warn = r.tiles > 6000 ? `<div class="hint" style="color:var(--warn)">⚠ 타일이 너무 많습니다. 권역을 나눠 여러 번 구우세요.</div>` : '';
+  $('planOut').innerHTML = `
+    <table style="margin-top:10px">
+      <tr><td>타일 수</td><td><b>${r.tiles.toLocaleString()}장</b></td></tr>
+      <tr><td>타일 한 변</td><td>${r.sideKm ? r.sideKm.toFixed(2) : '-'} km</td></tr>
+      <tr><td>예상 용량 (도심)</td><td>${kb(r.est.urban*1024)}</td></tr>
+      <tr><td>예상 용량 (소도시)</td><td>${kb(r.est.town*1024)}</td></tr>
+      <tr><td>예상 용량 (농촌·산간)</td><td>${kb(r.est.rural*1024)}</td></tr>
+      <tr><td>예상 소요 시간</td><td>${hours < 1 ? Math.round(hours*60)+'분' : hours.toFixed(1)+'시간'}</td></tr>
+    </table>
+    <div class="hint">바다·산속 타일은 데이터가 없어 파일이 생기지 않으므로 실제 용량은 이보다 작습니다.</div>${warn}`;
+}
+$('zoom').onchange = plan;
+
+// ── 굽기 ────────────────────────────────────────────────
+let pollTimer = null, currentJob = null;
+$('btnBake').onclick = async () => {
+  const body = {
+    bbox: readBBox(), zoom: +$('zoom').value, version: $('version').value.trim() || 'v1',
+    buildings: $('buildings').checked, resume: $('resume').checked, delayMs: 400,
+  };
+  const r = await fetch('/api/bake', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body) }).then(r => r.json());
+  if (r.error) { alert(r.error); return; }
+  currentJob = r.jobId;
+  $('progress').style.display = 'block';
+  $('btnBake').disabled = true; $('btnStop').style.display = 'block';
+  poll();
+};
+$('btnStop').onclick = () => fetch(`/api/job/${currentJob}/stop`, { method:'POST' });
+
+async function poll() {
+  if (!currentJob) return;
+  const j = await fetch(`/api/job/${currentJob}`).then(r => r.json());
+  const pct = j.total ? (j.done / j.total * 100) : 0;
+  $('barFill').style.width = pct + '%';
+  const cls = { running:'b-run', done:'b-done', error:'b-err', stopped:'b-stop' }[j.status];
+  const label = { running:'굽는 중', done:'완료', error:'오류', stopped:'중지됨' }[j.status];
+  const el = Math.round((Date.now() - j.startedAt) / 1000);
+  $('jobStat').innerHTML = `
+    <tr><td>상태</td><td><span class="badge ${cls}">${label}</span></td></tr>
+    <tr><td>진행</td><td>${j.done.toLocaleString()} / ${j.total.toLocaleString()} (${pct.toFixed(1)}%)</td></tr>
+    <tr><td>현재 타일</td><td>${j.current || '-'}</td></tr>
+    <tr><td>만든 파일</td><td>${j.made.toLocaleString()}장 · ${kb(j.bytes)}</td></tr>
+    <tr><td>빈 타일 / 건너뜀</td><td>${j.empty.toLocaleString()} / ${j.cached.toLocaleString()}</td></tr>
+    <tr><td>실패</td><td style="color:${j.failed?'var(--bad)':'inherit'}">${j.failed.toLocaleString()}</td></tr>
+    <tr><td>경과</td><td>${Math.floor(el/60)}분 ${el%60}초</td></tr>`;
+  $('jobLog').textContent = (j.log || []).slice(-40).join('\n');
+  $('jobLog').scrollTop = $('jobLog').scrollHeight;
+
+  if (j.status === 'running') {
+    pollTimer = setTimeout(poll, 1200);
+  } else {
+    $('btnBake').disabled = false; $('btnStop').style.display = 'none';
+    refreshOutput();
+  }
+  if (j.done % 10 === 0) refreshOutput();
+}
+
+// ── 결과 ────────────────────────────────────────────────
+$('btnRefresh').onclick = refreshOutput;
+async function refreshOutput() {
+  const version = $('version').value.trim() || 'v1';
+  const o = await fetch('/api/output?version=' + encodeURIComponent(version)).then(r => r.json());
+  $('outStat').innerHTML = `
+    <tr><td>저장 폴더</td><td style="font-size:11px">${o.outDir}</td></tr>
+    <tr><td>버전 폴더</td><td>${o.versions.join(', ') || '-'}</td></tr>
+    <tr><td>타일 파일</td><td><b>${o.tileCount.toLocaleString()}장</b></td></tr>
+    <tr><td>총 용량</td><td><b>${kb(o.totalBytes)}</b></td></tr>`;
+
+  $('gitHint').innerHTML = o.tileCount === 0 ? '아직 구운 파일이 없습니다.' : `
+    <b>git에 올릴 것:</b> <code>${o.outDir}</code> 폴더 통째로.<br>
+    안에 <code>latest.json</code>(목차)과 <code>${version}/</code>(타일)이 들어 있습니다.
+    둘 다 있어야 앱이 읽을 수 있습니다.<br><br>
+    <b>올리지 말 것:</b> <code>node_modules</code>, <code>src</code>, <code>.git</code> 등
+    나머지는 앱과 무관합니다.`;
+
+  // 지도에 구운 타일 표시
+  tileLayer.clearLayers();
+  for (const t of (o.tiles || [])) {
+    const [z, x, y] = t.t.split('/').map(Number);
+    const n = 2 ** z;
+    const lon1 = x / n * 360 - 180, lon2 = (x + 1) / n * 360 - 180;
+    const lat = yy => { const a = Math.PI - 2 * Math.PI * yy / n;
+      return 180 / Math.PI * Math.atan(.5 * (Math.exp(a) - Math.exp(-a))); };
+    L.rectangle([[lat(y + 1), lon1], [lat(y), lon2]],
+      { color:'#3ddc6a', weight:1, fillOpacity:.12, className:'baked' })
+      .on('click', () => showPreview(version, z, x, y))
+      .bindTooltip(`${t.t}<br>${kb(t.b)}<br><i>클릭하면 내용 미리보기</i>`)
+      .addTo(tileLayer);
+  }
+
+  $('appHint').innerHTML = `
+    <b>deadrun-expo/.env</b> 에 아래를 넣고 <code>npx expo start -c</code>:<br><br>
+    로컬 시험 (같은 wifi):<br>
+    <code>EXPO_PUBLIC_MAP_PACK_URL=http://${location.hostname === 'localhost' ? '&lt;이 PC의 IP&gt;' : location.hostname}:${location.port}</code><br><br>
+    GitHub Pages에 올린 뒤:<br>
+    <code>EXPO_PUBLIC_MAP_PACK_URL=https://&lt;아이디&gt;.github.io/&lt;저장소&gt;</code>`;
+}
+
+// ── 미리보기 ────────────────────────────────────────────
+async function showPreview(version, z, x, y) {
+  previewLayer.clearLayers();
+  const info = await fetch(`/api/tileinfo/${version}/${z}/${x}/${y}`).then(r => r.json());
+  if (info.error) { alert(info.error); return; }
+  const gj = await fetch(`/api/geojson/${version}/${z}/${x}/${y}`).then(r => r.json());
+
+  L.geoJSON(gj, {
+    style: f => f.properties.kind === 'building'
+      ? { color:'#7a869a', weight:.6, fillColor:'#4a5468', fillOpacity:.55 }
+      : { color: f.properties.layer === 1 ? '#f0b232' : f.properties.layer === -1 ? '#9b6bff' : '#ff4b3a',
+          weight: f.properties.spawn ? 2.2 : 1.2, opacity:.9 },
+  }).addTo(previewLayer);
+
+  const n = 2 ** z;
+  const lat = yy => { const a = Math.PI - 2 * Math.PI * yy / n;
+    return 180 / Math.PI * Math.atan(.5 * (Math.exp(a) - Math.exp(-a))); };
+  map.fitBounds([[lat(y + 1), x / n * 360 - 180], [lat(y), (x + 1) / n * 360 - 180]]);
+
+  L.popup().setLatLng([info.origin.lat, info.origin.lon]).setContent(
+    `<b>${info.tile}</b><br>${kb(info.bytes)}<br>` +
+    `도로 ${info.roads.toLocaleString()} · 건물 ${info.buildings.toLocaleString()}<br>` +
+    `좌표점 ${info.points.toLocaleString()}<br>` +
+    `지하 ${info.layers['-1']} / 지상 ${info.layers['0']} / 고가 ${info.layers['1']}<br>` +
+    `스폰 가능 ${info.spawnable.toLocaleString()}`).openOn(map);
+}
+
+refreshOutput();
+</script>
+</body>
+</html>

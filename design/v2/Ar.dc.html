@@ -1,0 +1,271 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+
+    body { margin: 0; background: #070A14;
+      font-family: "Outfit", -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #2FD9FF; text-decoration: none; }
+    a:hover { color: #8BE9FF; }
+    .glass { background: rgba(11,16,32,0.74); border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+    .stat-lbl { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.48); }
+    .stat-val { font-size: 27px; font-weight: 800; color: #fff; line-height: 29px; letter-spacing: -0.8px;
+      font-variant-numeric: tabular-nums; }
+    .stat-unit { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-left: 1px; }
+    .stat-sub { font-size: 9.5px; font-weight: 600; color: rgba(255,255,255,0.52); margin-top: 3px;
+      font-variant-numeric: tabular-nums; }
+    .divider { width: 1px; align-self: stretch; margin: 4px 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%); }
+    .rbtn { width: 58px; height: 58px; border-radius: 29px;
+      background: linear-gradient(180deg, rgba(62,78,126,0.92) 0%, rgba(24,32,58,0.94) 100%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.22);
+      display: flex; align-items: center; justify-content: center; position: relative; }
+    .rbtn-cap { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center;
+      font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.62); letter-spacing: 0.4px; }
+    .cta { border-radius: 16px; padding: 17px; text-align: center; font-size: 16px; font-weight: 800; color: #062330;
+      background: linear-gradient(180deg, #5FE4FF 0%, #0E96D2 100%);
+      border: 1px solid rgba(255,255,255,0.42);
+      box-shadow: 0 10px 26px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.45); }
+    .ghost { border-radius: 16px; padding: 15px; text-align: center; font-size: 14.5px; font-weight: 700; color: #fff;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); }
+    .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase;
+      color: rgba(255,255,255,0.42); }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #000000; overflow: hidden; position: relative">
+
+  <!-- ── 카메라 프리뷰 자리 (야간 가로 스탠드인) ── -->
+  <svg width="390" height="844" viewBox="0 0 390 844" style="position: absolute; top: 0; left: 0">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#121A2A"/><stop offset="1" stop-color="#080C14"/>
+      </linearGradient>
+      <linearGradient id="asphalt" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#10141C"/><stop offset="1" stop-color="#05070B"/>
+      </linearGradient>
+      <radialGradient id="lamp" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#FFC53D" stop-opacity="0.26"/><stop offset="1" stop-color="#FFC53D" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="zGlow" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#FF2E5B" stop-opacity="0.55"/><stop offset="1" stop-color="#FF2E5B" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="zGlowG" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#7CFF5B" stop-opacity="0.4"/><stop offset="1" stop-color="#7CFF5B" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="edgeR" x1="1" y1="0" x2="0" y2="0">
+        <stop offset="0" stop-color="#FF2E5B" stop-opacity="0.75"/><stop offset="1" stop-color="#FF2E5B" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+
+    <rect x="0" y="0" width="390" height="430" fill="url(#sky)"/>
+    <rect x="0" y="430" width="390" height="414" fill="url(#asphalt)"/>
+
+    <g fill="#0A0E16">
+      <path d="M0 128 L62 128 L62 438 L0 438 Z"/>
+      <path d="M62 196 L114 196 L114 438 L62 438 Z"/>
+      <path d="M114 258 L156 258 L156 438 L114 438 Z"/>
+      <path d="M240 272 L284 272 L284 438 L240 438 Z"/>
+      <path d="M284 180 L334 180 L334 438 L284 438 Z"/>
+      <path d="M334 102 L390 102 L390 438 L334 438 Z"/>
+    </g>
+    <g fill="#FFC53D" opacity="0.13">
+      <rect x="13" y="158" width="10" height="14" rx="1"/><rect x="33" y="158" width="10" height="14" rx="1"/>
+      <rect x="13" y="206" width="10" height="14" rx="1"/><rect x="42" y="242" width="10" height="14" rx="1"/>
+      <rect x="74" y="226" width="9" height="13" rx="1"/><rect x="93" y="268" width="9" height="13" rx="1"/>
+      <rect x="348" y="132" width="10" height="14" rx="1"/><rect x="368" y="132" width="10" height="14" rx="1"/>
+      <rect x="348" y="188" width="10" height="14" rx="1"/><rect x="298" y="212" width="9" height="13" rx="1"/>
+      <rect x="316" y="254" width="9" height="13" rx="1"/><rect x="252" y="304" width="9" height="13" rx="1"/>
+    </g>
+    <ellipse cx="328" cy="368" rx="122" ry="122" fill="url(#lamp)"/>
+
+    <!-- 지면 격자: 5m 간격, 카메라 높이 1.6m -->
+    <g stroke="#2FD9FF" stroke-opacity="0.10" stroke-width="1">
+      <line x1="0" y1="646" x2="390" y2="646"/><line x1="0" y1="534" x2="390" y2="534"/>
+      <line x1="0" y1="497" x2="390" y2="497"/><line x1="0" y1="478" x2="390" y2="478"/>
+      <line x1="0" y1="467" x2="390" y2="467"/><line x1="0" y1="459" x2="390" y2="459"/>
+      <line x1="195" y1="430" x2="-3315" y2="800"/><line x1="195" y1="430" x2="-975" y2="800"/>
+      <line x1="195" y1="430" x2="1365" y2="800"/><line x1="195" y1="430" x2="3705" y2="800"/>
+    </g>
+
+    <!-- 등지고 배회 중 — 뒷모습이 보인다 -->
+    <ellipse cx="312" cy="456" rx="42" ry="42" fill="url(#zGlowG)"/>
+    <g transform="translate(312 468)"><g transform="scale(0.62)"><ellipse rx="29.0" ry="9.5" fill="#7CFF5B" opacity="0.22"/><ellipse rx="14.0" ry="4.6" fill="#7CFF5B" opacity="0.418"/><filter id="zwrb062" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#7CFF5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#zwrb062)">
+    <path d="M-4,-28 Q-7,-18 -6.5,-10 Q-6,-5 -7,-2.5" stroke="#2E3444" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5,-28 Q8,-19 8,-11 Q8,-6 9,-2.5" stroke="#2E3444" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-7,-2.5 Q-10,-1.6 -12,-2.4" stroke="#2E3444" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M9,-2.5 Q12,-1.6 14,-2.4" stroke="#2E3444" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-11,-30 Q-13,-40 -9,-47.5 Q0,-51 9,-47.5 Q13,-40 11,-30 L8.5,-24 L5.5,-29.5 L2.5,-22.5 L-0.5,-29 L-3.5,-23 L-6.5,-29.5 L-8.5,-24 Z" fill="#262C3E"/>
+    <path d="M0,-47 L0.5,-31" stroke="#3B4258" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-10,-45 Q-16,-39 -16.5,-30" stroke="#262C3E" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10,-45 Q16,-39 16.5,-30" stroke="#262C3E" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-16.5,-30 Q-16.5,-25 -15.5,-21" stroke="#3E4234" stroke-width="5.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16.5,-30 Q16.5,-25 15.5,-21" stroke="#3E4234" stroke-width="5.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0,-46.5 Q0,-49.5 0,-51.5" stroke="#3E4234" stroke-width="6.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(0 -56.5) scale(1.02)">
+      <ellipse cx="0" cy="-4.2" rx="8.2" ry="9.3" fill="#8C9179"/>
+      <path d="M-8.2,-5.6 Q-7.4,-13.4 0,-13.5 Q7.4,-13.4 8.2,-5.6 Q4,-9.2 0,-8.6 Q-4,-9.2 -8.2,-5.6 Z" fill="#5A5F4C"/>
+      <path d="M-8,-2.4 Q-4,1.4 0,1.6 Q4,1.4 8,-2.4 Q6.6,3.6 0,5 Q-6.6,3.6 -8,-2.4 Z" fill="#5A5F4C"/>
+      <path d="M2.6,-7.4 Q5.8,-8.2 6.8,-5.2 Q4.6,-3.2 2.2,-4.2 Z" fill="#3E4234"/>
+    </g></g></g></g>
+
+    <!-- 옆으로 지나간다 — 측면 -->
+    <ellipse cx="56" cy="450" rx="34" ry="34" fill="url(#zGlowG)"/>
+    <g transform="translate(56 458)"><g transform="scale(0.46)"><ellipse rx="33.3" ry="10.9" fill="#7CFF5B" opacity="0.22"/><ellipse rx="16.1" ry="5.3" fill="#7CFF5B" opacity="0.418"/><filter id="zsrs046" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#7CFF5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#zsrs046)">
+    <path d="M6,-16 Q13,-13 16,-7 Q17,-4 19,-2" stroke="#262E2B" stroke-width="6.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M19,-2 Q22,-1.4 24,-2.6" stroke="#262E2B" stroke-width="5.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M4,-22 Q12,-17 15,-10" stroke="#1E2523" stroke-width="5.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M15,-10 Q17,-6 16,-3" stroke="#3E4234" stroke-width="4.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-1,-17 Q-8,-13 -10,-7 Q-11,-4 -13,-2" stroke="#262E2B" stroke-width="6.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-13,-2 Q-17,-1.4 -20,-2.8" stroke="#262E2B" stroke-width="5.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-10,-19 Q-16,-27 -10,-33 Q0,-37 8,-31 Q10,-24 8,-17 L6,-12 L4,-16.5 L1.5,-11 L-1,-16 L-4,-11.5 L-7,-16 Z" fill="#2F3A36"/>
+    <path d="M4,-33 Q9.5,-28 8.5,-18 L7,-13 L5.5,-16 Z" fill="#1E2523"/>
+    <path d="M-9,-32.5 Q-11,-36 -8,-38" stroke="#1E2523" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-8,-31 Q-20,-30 -28,-22" stroke="#2F3A36" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-28,-22 Q-34,-16 -37,-9" stroke="#8C9179" stroke-width="4.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-37,-9 L-42,-7" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-37.5,-8 L-41.5,-4.5" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-36,-7.5 L-38.5,-3" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-8,-32 Q-16,-33 -22,-32" stroke="#3E4234" stroke-width="4.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(-25 -33) scale(0.86)">
+    <path d="M-0.5,-10.4 Q6,-9.2 6.3,-4.2 Q6.5,-1.2 3.6,-0.4 L-3.6,-1.3 Q-7.4,-2.4 -7.6,-5.8 Q-7.8,-9.2 -0.5,-10.4 Z" fill="#8C9179"/>
+    <path d="M-0.5,-10.4 Q6,-9.2 6.3,-4.2 Q6.3,-2.2 5.1,-1.1 Q4.4,-4.8 1.9,-7.5 Z" fill="#5A5F4C"/>
+    <path d="M-7.2,-1 Q-4.2,0 -1.4,-0.6 Q-1,4.6 -3.8,5.4 Q-6.8,5.2 -7.2,-1 Z" fill="#171A12"/>
+    <path d="M-8,0.4 Q-7,7 -3,6.8 Q0.8,6.4 2.2,2 Q-2.6,3.8 -8,0.4 Z" fill="#5A5F4C"/>
+    <path d="M-7.4,-4.6 Q-4.6,-5.8 -2.6,-4.4 Q-3.6,-1.2 -6.2,-1.4 Q-7.8,-2.4 -7.4,-4.6 Z" fill="#171A12"/>
+    <path d="M-1.4,-4.4 Q0.4,-5.2 1.9,-4.2 Q1.2,-1.8 -0.6,-1.8 Q-1.7,-2.6 -1.4,-4.4 Z" fill="#171A12"/>
+    <circle cx="-5" cy="-3.4" r="1.05" fill="#DFFFCF"/>
+    <circle cx="0.3" cy="-3.2" r="0.78" fill="#DFFFCF" opacity="0.8"/>
+  </g></g></g></g>
+
+    <!-- 나를 향해 걸어온다 — 정면 -->
+    <ellipse cx="128" cy="470" rx="96" ry="96" fill="url(#zGlow)"/>
+    <g transform="translate(128 496)"><g transform="scale(1.5)"><ellipse rx="27.5" ry="9.0" fill="#FF2E5B" opacity="0.34"/><ellipse rx="13.3" ry="4.4" fill="#FF2E5B" opacity="0.646"/><filter id="zncf15" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#FF2E5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#zncf15)">
+    <path d="M-4,-29 Q-9,-21 -11,-13 Q-12,-8 -14,-5" stroke="#35302A" stroke-width="7.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5,-29 Q8,-21 9,-14 Q9.5,-9 10,-5" stroke="#35302A" stroke-width="7.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-14,-5 Q-18,-4 -20,-5.6" stroke="#35302A" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10,-5 Q14,-4 16,-5.6" stroke="#35302A" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-11,-31 Q-13.5,-41 -9,-49 Q0,-52.5 9,-49 Q13.5,-41 11,-31 L8,-24 L5,-30 L2,-22 L-1,-29 L-4,-22.5 L-7,-30 L-9,-24 Z" fill="#4E3A2A"/>
+    <path d="M4,-50 Q11.5,-45 12,-34 L10.5,-27 L8,-31 Z" fill="#32251A"/>
+    <path d="M-10,-47 Q-19,-44 -21,-37" stroke="#4E3A2A" stroke-width="7.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="-21.5" cy="-32.5" r="6.2" fill="#8C9179"/>
+    <path d="M-25.5,-35.5 L-29,-34" stroke="#8C9179" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-26,-32.5 L-30,-32" stroke="#8C9179" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-25,-29.5 L-28.5,-27.5" stroke="#8C9179" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10,-47 Q19,-43 22,-36" stroke="#32251A" stroke-width="6.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22,-36 Q24,-31 22.5,-27" stroke="#3E4234" stroke-width="5.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M24.5,-24.5 L26.5,-21" stroke="#3E4234" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5,-24 L21.5,-20.5" stroke="#3E4234" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0,-48 Q0.5,-51 1,-52.5" stroke="#3E4234" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(1.5 -57) scale(0.97)">
+      <path d="M-8.2,-8.4 Q0,-11.4 8.2,-8.4 Q9.8,-3.2 6.4,1.2 Q0,3.4 -6.4,1.2 Q-9.8,-3.2 -8.2,-8.4 Z" fill="#8C9179"/>
+      <path d="M3.8,-10 Q9,-7 7.6,-1.2 Q5.8,1.6 3,2.4 Q6,-3.4 3.8,-10 Z" fill="#5A5F4C"/>
+      <path d="M-4.4,0.2 Q0,1.4 4.4,0.2 Q3.8,6.4 0,6.8 Q-3.8,6.4 -4.4,0.2 Z" fill="#171A12"/>
+      <path d="M-5.4,1.6 Q-4.2,7.4 0,7.8 Q4.2,7.4 5.4,1.6 Q0,4.2 -5.4,1.6 Z" fill="#5A5F4C"/>
+      <path d="M-6.4,-5.4 Q-3.6,-6.6 -1.4,-5.2 Q-2.6,-1.8 -5.2,-2 Q-6.8,-3 -6.4,-5.4 Z" fill="#171A12"/>
+      <path d="M6.4,-5.4 Q3.6,-6.6 1.4,-5.2 Q2.6,-1.8 5.2,-2 Q6.8,-3 6.4,-5.4 Z" fill="#171A12"/>
+      <circle cx="-4" cy="-4" r="1.15" fill="#FFE3EA"/>
+      <circle cx="4" cy="-4" r="1.15" fill="#FFE3EA"/>
+    </g></g></g></g>
+
+    <!-- 화면 밖 추격자: 우측 에지 -->
+    <rect x="330" y="548" width="60" height="164" fill="url(#edgeR)"/>
+    <rect x="384" y="548" width="5" height="164" rx="2.5" fill="#FF2E5B"/>
+  </svg>
+
+  <!-- ── 상단 스탯 바 (지도 뷰와 동일) ── -->
+  <div class="glass" style="position: absolute; top: 58px; left: 12px; right: 12px; border-radius: 22px; padding: 11px 6px 12px">
+    <div style="display: flex; flex-direction: row; align-items: stretch">
+      <div style="flex-grow: 1.25; flex-basis: 0; text-align: center; padding: 0 4px">
+        <div class="stat-lbl" style="color: #2FD9FF">주행</div>
+        <div class="stat-val" style="margin-top: 4px">2.41<span class="stat-unit">km</span></div>
+        <div class="stat-sub">평균 9.8 · 현재 0.0<span style="color: rgba(255,255,255,0.34)"> km/h</span></div>
+      </div>
+      <div class="divider"></div>
+      <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 0 4px">
+        <div class="stat-lbl" style="color: #FF7D9B">목숨</div>
+        <div class="stat-val" style="margin-top: 4px; color: #FFFFFF">64</div>
+        <div style="display: flex; gap: 2.5px; margin-top: 8px; padding: 0 10px"><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: #FF2E5B"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: #FF2E5B"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: #FF2E5B"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: rgba(255,255,255,0.15)"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: rgba(255,255,255,0.15)"></div></div>
+      </div>
+      <div class="divider"></div>
+      <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 0 4px">
+        <div class="stat-lbl" style="color: #FFC53D">탄약</div>
+        <div class="stat-val" style="margin-top: 4px">07</div>
+        <div style="display: flex; gap: 2.5px; margin-top: 8px; padding: 0 10px"><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: #FFC53D"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: #FFC53D"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: rgba(255,255,255,0.15)"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: rgba(255,255,255,0.15)"></div><div style="flex-grow: 1; height: 3.5px; border-radius: 2px; background: rgba(255,255,255,0.15)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 정지 고정 칩 -->
+  <div style="position: absolute; top: 168px; left: 0; right: 0; display: flex; justify-content: center">
+    <div class="glass" style="border-radius: 16px; padding: 6px 13px; display: flex; flex-direction: row; align-items: center; gap: 7px">
+      <div style="width: 7px; height: 7px; border-radius: 4px; background: #2FD9FF; box-shadow: 0 0 8px #2FD9FF"></div>
+      <span style="color: #FFFFFF; font-size: 11.5px; font-weight: 700">정지 고정 · AR 유지 중</span>
+    </div>
+  </div>
+
+  <!-- 조준 링 -->
+  <div style="position: absolute; top: 422px; left: 195px; width: 96px; height: 96px; margin-left: -48px; margin-top: -48px">
+    <svg width="96" height="96" viewBox="0 0 96 96" fill="none">
+      <circle cx="48" cy="48" r="38" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="2"/>
+      <g stroke="#FF2E5B" stroke-width="3.5" stroke-linecap="round">
+        <path d="M14 30V17a3 3 0 0 1 3-3h13"/><path d="M66 14h13a3 3 0 0 1 3 3v13"/>
+        <path d="M82 66v13a3 3 0 0 1-3 3H66"/><path d="M30 82H17a3 3 0 0 1-3-3V66"/>
+      </g>
+      <circle cx="48" cy="48" r="3" fill="#FFFFFF"/>
+    </svg>
+  </div>
+
+  <!-- 조준 대상 카드 -->
+  <div class="glass" style="position: absolute; top: 528px; left: 50%; margin-left: -104px; width: 208px; border-radius: 18px; padding: 10px 13px; border-left: 3px solid #FF2E5B">
+    <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between">
+      <div>
+        <div style="color: #FFFFFF; font-size: 14px; font-weight: 800; letter-spacing: 0.3px">RUNNER</div>
+        <div style="color: rgba(255,255,255,0.55); font-size: 11px; font-weight: 600; margin-top: 1px">18m · 12km/h</div>
+      </div>
+      <div style="display: flex; flex-direction: row; gap: 4px">
+        <div style="width: 9px; height: 9px; border-radius: 5px; background: #FF2E5B"></div>
+        <div style="width: 9px; height: 9px; border-radius: 5px; background: #FF2E5B"></div>
+        <div style="width: 9px; height: 9px; border-radius: 5px; background: rgba(255,255,255,0.2)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭 안내 -->
+  <div style="position: absolute; top: 586px; left: 0; right: 0; text-align: center">
+    <span style="color: rgba(255,255,255,0.55); font-size: 11px; font-weight: 600">화면 탭 — 사격 · 소음 120m</span>
+  </div>
+
+  <!-- 하단 조작 — 사격은 화면 탭이므로 버튼은 이탈 하나뿐이다 -->
+  <div style="position: absolute; bottom: 38px; left: 16px; right: 16px">
+    <div style="height: 62px; border-radius: 31px;
+      background: linear-gradient(180deg, rgba(62,78,126,0.92) 0%, rgba(24,32,58,0.94) 100%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.22);
+      display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6.4 10.2 3.2 13.8 5 21 2.4v15.2L13.8 20.2 10.2 18.4 3 21.6V6.4Z"/>
+        <path d="M10.2 3.2v15.2M13.8 5v15.2"/>
+      </svg>
+      <span style="color: #FFFFFF; font-size: 15px; font-weight: 700">지도 뷰</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

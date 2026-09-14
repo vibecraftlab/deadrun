@@ -1,0 +1,19 @@
+{
+  "name": "deadrun-mapkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OSM 지도를 타일로 구워 정적 호스팅(GitHub Pages 등)에 올리고, 앱에서 필요한 타일만 받아 쓰는 도구 모음",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "mapkit": "tsx bin/mapkit.ts",
+    "test": "tsx test/roundtrip.ts",
+    "typecheck": "tsc --noEmit",
+    "admin": "tsx server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
