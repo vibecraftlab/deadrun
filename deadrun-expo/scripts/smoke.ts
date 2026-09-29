@@ -1,12 +1,17 @@
 /** 코어 로직 헤드리스 스모크 테스트: npx tsx scripts/smoke.ts */
-import { generateSyntheticMap } from '../src/core/syntheticMap';
+import { generateTestGrid } from './testMap';
 import { RoadGraph, RoadWay } from '../src/core/roadGraph';
 import { findPath } from '../src/core/astar';
 import { ZombieSimulation, Zombie, ZombieTypes } from '../src/core/zombies';
 import { LocationFilter } from '../src/core/locationFilter';
-import { dist, v } from '../src/core/geo';
+import { dist, v, fromEnu, Vec2 } from '../src/core/geo';
+import { ZoneIndex, isSafeAt, pointInPolygon } from '../src/core/safeZones';
 import { pickView } from '../src/components/zombieArtSpec';
 import { HeadingFilter } from '../src/core/headingFilter';
+import {
+  ADAPTIVE, RunRecord, adaptiveChaseKmh, personalBests, recentAvgKmh,
+  weekStreak, weeks,
+} from '../src/core/runStats';
 import { Config } from '../src/config';
 
 let fail = 0;
@@ -15,7 +20,7 @@ const check = (cond: boolean, name: string) => {
   if (!cond) fail++;
 };
 
-const g = RoadGraph.build(generateSyntheticMap(600));
+const g = RoadGraph.build(generateTestGrid(600));
 console.log(`그래프: 노드 ${g.nodes.length}, 엣지 ${g.edges.length}`);
 check(g.nodes.length > 100 && g.edges.length > 200, '그래프 빌드');
 
@@ -74,14 +79,16 @@ check(!caught, '15km/h 도주 시 워커에게 안 잡힘');
     sm.useFov = false; // 이탈 규칙만 검증
     sm.escapeDistance = 100;
     sm.relentless = relentless;
+    sm.deAggroHoldSec = Config.deAggroHoldSec;
     const z = new Zombie(1, ZombieTypes[0], v(30, 0), 0); // 워커, 감지범위 40m
     sm.zombies.push(z);
     let pp = v(0, 0);
     for (let i = 0; i < 20; i++) sm.tick(0.1, pp, 0); // 감지 → 추격
     const detected = z.state;
-    // 플레이어가 멀리 이동(감지범위 2배 밖) 후 40초 경과
+    // 플레이어가 멀리 이동(감지범위 2배 밖) 후 해제 유예를 넘겨 경과
     pp = v(-400, 0);
-    for (let i = 0; i < 400; i++) sm.tick(0.1, pp, 0);
+    const frames = Math.ceil((Config.deAggroHoldSec + 10) / 0.1);
+    for (let i = 0; i < frames; i++) sm.tick(0.1, pp, 0);
     return { detected, after: z.state };
   };
   const relent = mk(true);
@@ -310,9 +317,10 @@ check(!caught, '15km/h 도주 시 워커에게 안 잡힘');
   for (let i = 0; i < 100; i++) sm.tick(0.1, v(0, 150), 0);
   check(z.state === 'chase', `이탈 거리 안 → 추격 유지 (${z.state})`);
 
-  // 이탈 거리 밖(400m)에서 3초 이상 → 놓침
-  for (let i = 0; i < 60; i++) sm.tick(0.1, v(0, 400), 0);
-  check(z.state !== 'chase', `이탈 거리 밖 3초 → 놓침 (${z.state})`);
+  // 이탈 거리 밖(400m)에서 해제 유예를 넘기면 놓침
+  const outFrames = Math.ceil((Config.deAggroHoldSec + 5) / 0.1);
+  for (let i = 0; i < outFrames; i++) sm.tick(0.1, v(0, 400), 0);
+  check(z.state !== 'chase', `이탈 거리 밖 ${Config.deAggroHoldSec}초 → 놓침 (${z.state})`);
 }
 
 // 감지 범위 배수: 레이더(150m)에 보이는 좀비가 전부 추격에 들어가는가
@@ -566,6 +574,202 @@ check(stopLockAt >= 0 && stopLockAt <= 12, `정지 후 잠금 진입 (${stopLock
   check(!poseMoving.locked, '이동 힌트 true → 즉시 잠금 해제');
 }
 
+// ── 추격 해제: 인지 범위 밖에서 1분 버티면 풀린다 ──────────────
+//
+//  따돌릴 수 없는 추격은 러닝 게임의 인터벌 구조와 맞지 않는다.
+//  다만 경계에서 GPS가 몇 m씩 흔들리면 추격이 붙었다 풀렸다 하므로 유예를 둔다.
+{
+  const gd = RoadGraph.build(generateTestGrid(600));
+  const sim = new ZombieSimulation(gd, 99);
+  sim.relentless = false;
+  sim.deAggroHoldSec = Config.deAggroHoldSec;
+  sim.escapeDistance = 0;               // 0 = 자기 인지 범위를 벗어나면 놓친다
+
+  const walker = new Zombie(1, ZombieTypes[0], v(0, 0), 0);
+  walker.state = 'chase';               // 이미 나를 쫓는 중
+  sim.zombies.push(walker);
+
+  const detect = ZombieTypes[0].detectRange;   // 워커 40m
+  const far = v(detect * 3, 0);                // 인지 범위 밖으로 확실히 나간다
+
+  // ① 범위 밖으로 나가자마자 풀리지는 않는다
+  for (let t = 0; t < Config.deAggroHoldSec - 5; t += 0.5) sim.tick(0.5, far, 0);
+  check(walker.state === 'chase',
+    `범위를 벗어나도 ${Config.deAggroHoldSec}초 전에는 안 풀린다 (${Config.deAggroHoldSec - 5}초 경과, 상태 ${walker.state})`);
+
+  // ② 유예를 넘기면 풀린다
+  for (let t = 0; t < 10; t += 0.5) sim.tick(0.5, far, 0);
+  check(walker.state !== 'chase',
+    `${Config.deAggroHoldSec}초를 넘기면 추격이 풀린다 (상태 ${walker.state})`);
+
+  // ③ 중간에 다시 범위 안으로 들어오면 타이머가 초기화된다
+  //    (경계에서 GPS가 흔들릴 때 조금씩 쌓여 풀려버리면 안 된다)
+  const w2 = new Zombie(2, ZombieTypes[0], v(0, 0), 0);
+  w2.state = 'chase';
+  const sim2 = new ZombieSimulation(gd, 98);
+  sim2.relentless = false;
+  sim2.deAggroHoldSec = Config.deAggroHoldSec;
+  sim2.escapeDistance = 0;
+  sim2.zombies.push(w2);
+  const near = v(detect * 0.5, 0);
+  for (let cycle = 0; cycle < 4; cycle++) {
+    // 범위 밖 · 범위 안을 번갈아 — 매번 유예의 절반씩만 버틴다
+    for (let t = 0; t < Config.deAggroHoldSec * 0.5; t += 0.5) sim2.tick(0.5, far, 0);
+    for (let t = 0; t < 2; t += 0.5) sim2.tick(0.5, near, 0);
+  }
+  check(w2.state === 'chase',
+    `범위를 들락날락하면 타이머가 초기화돼 안 풀린다 (상태 ${w2.state})`);
+
+  // ④ relentless 를 켜면 아무리 도망쳐도 안 풀린다 (설정이 여전히 먹는지)
+  const w3 = new Zombie(3, ZombieTypes[0], v(0, 0), 0);
+  w3.state = 'chase';
+  const sim3 = new ZombieSimulation(gd, 97);
+  sim3.relentless = true;
+  sim3.deAggroHoldSec = Config.deAggroHoldSec;
+  sim3.zombies.push(w3);
+  for (let t = 0; t < Config.deAggroHoldSec * 3; t += 0.5) sim3.tick(0.5, far, 0);
+  check(w3.state === 'chase', 'relentless=true 면 끝까지 쫓아온다');
+}
+
+// ── 표시 위치를 도로에 붙이는 것이 이득인가 ────────────────────
+//
+//  도심에서 GPS 오차는 10~20m인데 보행로에서 건물까지가 중앙값 19m다.
+//  필터 위치를 그대로 그리면 걷는 중에 건물 안에 찍힌다.
+//  도로에 붙이면 길 위에 남지만, 예전에 "한 번에 30m 순간이동"으로 되돌린 이력이 있다.
+//  자세한 계측은 scripts/snapjump.ts. 여기서는 그 결론이 뒤집히지 않았는지만 지킨다.
+{
+  const g2 = RoadGraph.build(generateTestGrid(600));
+  const f2 = new LocationFilter(g2);
+  let truth = g2.nodes[g2.nearestNode(v(0, 0))];
+  f2.reset(truth);
+
+  let sd = 12345;
+  const rnd2 = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const gs = () => Math.sqrt(-2 * Math.log(1 - rnd2())) * Math.sin(2 * Math.PI * rnd2());
+
+  const FPS = 30;
+  const smoothK = 1 - Math.exp(-Config.renderSmoothing / FPS);
+  let render = truth;
+  const steps: number[] = [];
+  let errSnap = 0, errFilt = 0, samples = 0;
+
+  for (let sec = 0; sec < 150; sec++) {
+    truth = v(truth.x + 10 / 3.6, truth.y);           // 10km/h 직진
+    let pose = f2.update(v(truth.x + gs() * 8, truth.y + gs() * 8), 1);  // GPS σ8m
+    for (let fr = 0; fr < FPS; fr++) {
+      if (fr > 0) pose = f2.predict(1 / FPS);
+      // game.ts renderStep 과 같은 선택
+      const target = pose.snapped ? pose.posSnapped : pose.posFiltered;
+      const prev = render;
+      render = v(
+        render.x + (target.x - render.x) * smoothK,
+        render.y + (target.y - render.y) * smoothK,
+      );
+      if (sec > 10) {
+        steps.push(dist(prev, render));
+        errSnap += dist(render, truth);
+        errFilt += dist(pose.posFiltered, truth);
+        samples++;
+      }
+    }
+  }
+
+  const sorted = [...steps].sort((a, b) => a - b);
+  const stepMax = sorted[sorted.length - 1];
+  const snapErr = errSnap / samples;
+  const filtErr = errFilt / samples;
+  console.log(`  표시 위치: 스냅 ${snapErr.toFixed(2)}m vs 필터 ${filtErr.toFixed(2)}m `
+    + `| 프레임당 최대 이동 ${stepMax.toFixed(2)}m`);
+  check(snapErr < filtErr, `도로에 붙이면 실제 위치에 더 가깝다 (${snapErr.toFixed(2)} < ${filtErr.toFixed(2)}m)`);
+  // 예전에 되돌린 이유가 순간이동이었다. 보간이 흡수하는지 지킨다.
+  check(stepMax < 3, `순간이동 없음 — 프레임당 ${stepMax.toFixed(2)}m < 3m`);
+}
+
+// ── 런 기록 집계 · 적응형 난이도 ───────────────────────────────
+//
+//  기록 화면 네 개와 좀비 속도가 전부 이 계산에 달려 있다.
+//  특히 "주 단위"와 "연속 기록" 규칙은 design/v2 Training 의 설계 근거라 못 박아 둔다.
+{
+  const NOW = new Date(2026, 8, 16); // 2026-09-16 (수)
+  const day = (offset: number, km: number, chaseSec = 0): RunRecord => {
+    const d = new Date(NOW);
+    d.setDate(d.getDate() - offset);
+    return {
+      startedAt: d.toISOString(),
+      distanceM: km * 1000,
+      durationSec: (km / 10) * 3600,          // 10km/h 로 달린 셈
+      chaseSec,
+      chaseDistanceM: (chaseSec / 3600) * 15000, // 쫓길 때는 15km/h
+      chaseCount: chaseSec > 0 ? 1 : 0,
+      longestChaseSec: chaseSec,
+      kills: 3,
+      killsByType: { Walker: 2, Runner: 1 },
+      supplies: 1,
+      deathCause: '',
+      splits: [{ km: 1, sec: 360, chasedSec: 60 }],
+    };
+  };
+
+  // 주는 월요일에 시작한다. 2026-09-16(수) 기준 이번 주 = 09-14(월)~
+  const w = weeks([day(0, 3), day(1, 2), day(7, 5)], 2, NOW);
+  check(w.length === 2, '최근 n주는 기록이 없는 주도 채워 돌려준다');
+  check(Math.abs(w[1].distanceM / 1000 - 5) < 1e-6, `이번 주 합계 5km (${w[1].distanceM / 1000})`);
+  check(Math.abs(w[0].distanceM / 1000 - 5) < 1e-6, '지난주 합계 5km');
+  // 월=0 … 수=2
+  check(Math.abs(w[1].daily[2] / 1000 - 3) < 1e-6, '요일별 배분 — 수요일 3km');
+  check(Math.abs(w[1].daily[1] / 1000 - 2) < 1e-6, '요일별 배분 — 화요일 2km');
+
+  // 연속 기록: 진행 중인 이번 주는 목표를 채웠을 때만 센다.
+  // 수요일에 "연속 0주"라고 겁주지 않기 위한 규칙이다.
+  const goal = 20;
+  const full = (weekOffset: number) => day(weekOffset * 7 + 1, goal);
+  check(weekStreak([full(1), full(2), full(3)], goal, NOW) === 3,
+    '지난 3주 달성 → 연속 3주 (이번 주는 아직 진행 중이라 안 센다)');
+  check(weekStreak([full(1), full(3)], goal, NOW) === 1,
+    '중간에 거른 주가 있으면 거기서 끊긴다');
+  check(weekStreak([day(0, goal), full(1)], goal, NOW) === 2,
+    '이번 주를 이미 채웠으면 거기에 더한다');
+  check(weekStreak([day(0, 1), full(1)], goal, NOW) === 1,
+    '이번 주가 모자라도 지난주까지의 연속은 살아 있다');
+
+  // 적응형 난이도 — 기록이 난이도를 만든다 (Training §3)
+  const fallback = 16;
+  check(adaptiveChaseKmh([], fallback, undefined, NOW) === fallback,
+    '기록이 없으면 설정값을 그대로 쓴다');
+
+  const steady = [day(1, 10), day(8, 10), day(15, 10)]; // 전부 10km/h
+  const avg = recentAvgKmh(steady, ADAPTIVE.weeks, NOW);
+  check(Math.abs(avg - 10) < 0.01, `최근 4주 평균 10km/h (${avg.toFixed(2)})`);
+  const target = adaptiveChaseKmh(steady, fallback, undefined, NOW);
+  check(Math.abs(target - 10 * ADAPTIVE.multiplier) < 0.05,
+    `내 평균 × ${ADAPTIVE.multiplier} = ${target}km/h`);
+
+  // 주당 변화폭은 ±5%로 묶는다 — 갑자기 빨라지거나 느려지지 않게
+  const capped = adaptiveChaseKmh(steady, fallback, 10, NOW);
+  check(capped <= 10 * (1 + ADAPTIVE.maxStepPct) + 1e-6,
+    `한 주에 ${Math.round(ADAPTIVE.maxStepPct * 100)}% 넘게 오르지 않는다 (10 → ${capped})`);
+  // day() 헬퍼는 언제나 10km/h라 느린 사람을 만들려면 시간을 직접 늘려야 한다
+  const slowRun = day(1, 3);
+  slowRun.durationSec = (3 / 4) * 3600;   // 4km/h — 빠르게 걷는 정도
+  const floored = adaptiveChaseKmh([slowRun], fallback, undefined, NOW);
+  check(floored >= ADAPTIVE.floorKmh,
+    `아무리 느려도 하한 ${ADAPTIVE.floorKmh}km/h 아래로 안 간다 (${floored})`);
+  // 하한이 느린 사람을 벌주면 안 된다 — "복귀가 무섭지 않다"가 설계 의도다.
+  // 4km/h(빠른 걷기)로 달려도 좀비가 내 속도의 1.5배를 넘지 않아야 한다.
+  const walkPace = day(1, 3);
+  walkPace.durationSec = (3 / 4) * 3600;            // 4km/h
+  const forWalker = adaptiveChaseKmh([walkPace], fallback, undefined, NOW);
+  check(forWalker <= 4 * 1.5,
+    `느린 사용자에게 과한 좀비를 붙이지 않는다 (4km/h → ${forWalker}km/h, 내 속도의 ${(forWalker / 4).toFixed(2)}배)`);
+
+  // 개인 기록 — 1km 기록만 "작을수록 좋다"
+  const a = day(1, 5); a.splits = [{ km: 1, sec: 300, chasedSec: 0 }];
+  const b = day(2, 3); b.splits = [{ km: 1, sec: 278, chasedSec: 10 }];
+  const pb = personalBests([a, b]);
+  check(pb.fastestKmSec?.value === 278, `1km 최고는 가장 짧은 시간 (${pb.fastestKmSec?.value}초)`);
+  check(pb.longestRunM?.value === 5000, '가장 멀리 달린 런은 가장 긴 거리');
+}
+
 // ── AR 카메라 흔들림: 자이로 데드밴드 + 저역 필터 ──────────────
 //
 //  폰을 고정해도 DeviceMotion.rotation.alpha 가 0.3° 안팎으로 떤다.
@@ -633,6 +837,118 @@ check(stopLockAt >= 0 && stopLockAt <= 12, `정지 후 잠금 진입 (${stopLock
   check(Math.abs(lost) < 3, `데드밴드가 회전량을 먹지 않음 (부족 ${lost.toFixed(2)}° < 3°)`);
 }
 
+
+// ── 안전 구역 / 비안전 구역 ────────────────────────────────────
+//
+//  건물이 처음으로 게임 로직이 된 자리다. 지금까지는 렌더 대상일 뿐이었다.
+{
+  const sq = (cx: number, cy: number, r: number): Vec2[] => [
+    v(cx - r, cy - r), v(cx + r, cy - r), v(cx + r, cy + r), v(cx - r, cy + r),
+  ];
+
+  // 점-다각형: 볼록/오목 둘 다
+  check(pointInPolygon(v(0, 0), sq(0, 0, 10)), '사각형 안의 점');
+  check(!pointInPolygon(v(11, 0), sq(0, 0, 10)), '사각형 밖의 점');
+  check(!pointInPolygon(v(0, 40), sq(0, 0, 10)), '한참 밖의 점');
+  // ㄷ자 — 오목 다각형의 파인 부분은 바깥이다 (반직선 교차가 맞게 도는지)
+  const uShape: Vec2[] = [
+    v(0, 0), v(30, 0), v(30, 30), v(20, 30), v(20, 10), v(10, 10), v(10, 30), v(0, 30),
+  ];
+  check(pointInPolygon(v(5, 20), uShape), 'ㄷ자 왼쪽 기둥 안');
+  check(!pointInPolygon(v(15, 20), uShape), 'ㄷ자 파인 곳은 바깥');
+
+  // 안전 판정은 결정론적이다 — 같은 건물은 언제 물어도 같은 답
+  const at = { lat: 37.5266, lon: 126.9244 };
+  const once = isSafeAt(at, 0.15);
+  let stable = true;
+  for (let i = 0; i < 50; i++) if (isSafeAt(at, 0.15) !== once) stable = false;
+  check(stable, '같은 좌표는 언제나 같은 판정');
+
+  // 비율이 대략 맞는가 — 1,000개를 흩뿌려 센다
+  let safeN = 0;
+  for (let i = 0; i < 1000; i++)
+    if (isSafeAt({ lat: 37.5 + i * 0.0007, lon: 126.9 + (i % 37) * 0.0011 }, 0.15)) safeN++;
+  console.log(`  안전 구역 비율: 1000개 중 ${safeN}개 (목표 150)`);
+  check(safeN > 105 && safeN < 200, `안전 비율이 설정값 근처 (${safeN}/1000, 목표 150)`);
+  check(!isSafeAt(at, 0), '비율 0이면 안전 구역이 없다');
+  check(isSafeAt(at, 1), '비율 1이면 전부 안전 구역');
+
+  // 색인: 건물을 실제로 찾아내는가
+  const origin = { lat: 37.5266, lon: 126.9244 };
+  const polys = [sq(0, 0, 10), sq(100, 0, 10), sq(0, 100, 10), sq(-250, 300, 15)];
+  const idx = new ZoneIndex(polys, origin, 1, 60);   // 전부 안전으로
+  check(idx.buildingAt(v(0, 0)) === 0, '색인: 첫 건물 안');
+  check(idx.buildingAt(v(100, 0)) === 1, '색인: 격자 칸이 다른 건물 안');
+  check(idx.buildingAt(v(-250, 300)) === 3, '색인: 멀리 떨어진 건물 안');
+  check(idx.buildingAt(v(50, 50)) === -1, '색인: 건물 사이 빈 곳');
+  check(idx.buildingAt(v(9999, 9999)) === -1, '색인: 색인 범위 밖');
+  check(idx.safeCount === 4, '색인: 비율 1이면 전부 안전');
+  check(new ZoneIndex(polys, origin, 0, 60).safeCount === 0, '색인: 비율 0이면 전부 일반');
+
+  // 같은 건물이라도 런의 원점이 다르면 ENU 좌표가 달라진다.
+  // 그래도 안전 판정은 같아야 한다 — 해시를 위경도로 되돌려 하기 때문이다.
+  // 원점을 동쪽으로 100m 옮기고, 건물 ENU 좌표도 같이 100m 밀어 본다.
+  const origin2 = fromEnu(origin, v(100, 0));
+  const shifted = polys.map(p => p.map(q => v(q.x - 100, q.y)));
+  const idxA = new ZoneIndex(polys, origin, 0.5, 60);
+  const idxB = new ZoneIndex(shifted, origin2, 0.5, 60);
+  const sameAll = idxA.safe.every((s, i) => s === idxB.safe[i]);
+  check(sameAll, '원점이 달라도 같은 건물은 같은 판정 (위경도 해시)');
+}
+
+// ── 좀비가 플레이어와 겹치지 않는다 ────────────────────────────
+//
+//  예전에는 좀비가 플레이어 좌표에 정확히 올라탈 수 있었다. 그러면
+//  좀비→플레이어 방위가 정의되지 않아 AR이 카메라 원점에 그렸다
+//  ("좀비가 내 밑에 있다"). 시뮬 차원에서 간격을 유지한다.
+{
+  const gsep = RoadGraph.build(generateTestGrid(600));
+  const sim = new ZombieSimulation(gsep, 7);
+  sim.constrainToRoad = false;   // 도로 클램프와 분리해서 간격만 본다
+  sim.minPlayerSepM = 0.4;
+  sim.detectRangeMult = 10;      // 곧장 추격에 들어가게
+
+  const player = v(0, 0);
+  const zs = [
+    new Zombie(1, ZombieTypes[0], v(0, 0), 0),      // 완전히 겹친 상태로 시작
+    new Zombie(2, ZombieTypes[1], v(0.05, 0), 0),   // 거의 겹침
+    new Zombie(3, ZombieTypes[3], v(3, 0), 0),      // 달려와서 붙는다
+  ];
+  sim.zombies = zs;
+
+  let minSeen = Infinity;
+  for (let i = 0; i < 400; i++) {
+    sim.tick(0.1, player, 0);
+    for (const z of zs) minSeen = Math.min(minSeen, dist(z.pos, player));
+  }
+  console.log(`  400틱 중 최소 간격: ${minSeen.toFixed(3)}m (설정 0.4m)`);
+  check(minSeen > 0.39, `좀비가 플레이어와 겹치지 않는다 (${minSeen.toFixed(3)}m ≥ 0.4m)`);
+
+  // 간격이 공격 사거리보다 작아야 여전히 때릴 수 있다
+  const sim2 = new ZombieSimulation(gsep, 7);
+  sim2.constrainToRoad = false;
+  sim2.minPlayerSepM = 0.4;
+  sim2.attackRange = 0.5;
+  sim2.detectRangeMult = 10;
+  let hits = 0;
+  sim2.onAttack = () => { hits++; };
+  sim2.zombies = [new Zombie(1, ZombieTypes[0], v(2, 0), 0)];
+  for (let i = 0; i < 300; i++) sim2.tick(0.1, player, 0);
+  check(hits > 0, `간격을 두고도 공격은 닿는다 (${hits}회 타격)`);
+
+  // 보호 중이면 사거리 안이어도 한 대도 못 때린다
+  const sim3 = new ZombieSimulation(gsep, 7);
+  sim3.constrainToRoad = false;
+  sim3.minPlayerSepM = 0.4;
+  sim3.attackRange = 0.5;
+  sim3.detectRangeMult = 10;
+  sim3.playerShielded = true;
+  let blocked = 0;
+  sim3.onAttack = () => { blocked++; };
+  sim3.zombies = [new Zombie(1, ZombieTypes[0], v(2, 0), 0)];
+  for (let i = 0; i < 300; i++) sim3.tick(0.1, player, 0);
+  check(blocked === 0, `보호 구역 안에서는 공격이 닿지 않는다 (${blocked}회)`);
+}
+
 console.log(fail === 0 ? '\n=== 전체 통과 ===' : `\n=== 실패 ${fail}건 ===`);
 process.exit(fail);
-

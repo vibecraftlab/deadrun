@@ -1,0 +1,272 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+
+    body { margin: 0; background: #070A14;
+      font-family: "Outfit", -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #2FD9FF; text-decoration: none; }
+    a:hover { color: #8BE9FF; }
+    .glass { background: rgba(11,16,32,0.74); border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+    .stat-lbl { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.48); }
+    .stat-val { font-size: 27px; font-weight: 800; color: #fff; line-height: 29px; letter-spacing: -0.8px;
+      font-variant-numeric: tabular-nums; }
+    .stat-unit { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-left: 1px; }
+    .stat-sub { font-size: 9.5px; font-weight: 600; color: rgba(255,255,255,0.52); margin-top: 3px;
+      font-variant-numeric: tabular-nums; }
+    .divider { width: 1px; align-self: stretch; margin: 4px 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%); }
+    .rbtn { width: 58px; height: 58px; border-radius: 29px;
+      background: linear-gradient(180deg, rgba(62,78,126,0.92) 0%, rgba(24,32,58,0.94) 100%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.22);
+      display: flex; align-items: center; justify-content: center; position: relative; }
+    .rbtn-cap { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center;
+      font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.62); letter-spacing: 0.4px; }
+    .cta { border-radius: 16px; padding: 17px; text-align: center; font-size: 16px; font-weight: 800; color: #062330;
+      background: linear-gradient(180deg, #5FE4FF 0%, #0E96D2 100%);
+      border: 1px solid rgba(255,255,255,0.42);
+      box-shadow: 0 10px 26px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.45); }
+    .ghost { border-radius: 16px; padding: 15px; text-align: center; font-size: 14.5px; font-weight: 700; color: #fff;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); }
+    .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase;
+      color: rgba(255,255,255,0.42); }
+
+    .pr { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .prk { color: rgba(255,255,255,0.5); font-size: 11.5px; font-weight: 600; flex-grow: 1; }
+    .prv { color: #fff; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .prd { color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 600; width: 42px; text-align: right; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #070A14; overflow: hidden; position: relative; display: flex; flex-direction: column">
+  <div style="padding: 62px 22px 0; flex-shrink: 0">
+    <div class="eyebrow">누적 128.4km · 42회</div>
+    <div style="color: #fff; font-size: 27px; font-weight: 800; letter-spacing: -0.8px; margin-top: 6px">기록과 도감</div>
+  </div>
+
+  <div style="padding: 16px 22px 26px; flex-grow: 1; overflow: hidden">
+
+    <div class="glass" style="border-radius: 20px; padding: 16px">
+      <div class="eyebrow" style="margin-bottom: 4px">개인 기록</div>
+      <div class="pr"><span class="prk">가장 멀리 달린 런</span><span class="prv">6.82<span style="font-size:10px;color:rgba(255,255,255,0.4)">km</span></span><span class="prd">8/25</span></div>
+      <div class="pr"><span class="prk">1km 최고</span><span class="prv">4:38</span><span class="prd">9/08</span></div>
+      <div class="pr"><span class="prk">가장 오래 버틴 추격</span><span class="prv" style="color:#FF7D9B">3:12</span><span class="prd">9/01</span></div>
+      <div class="pr" style="border-bottom:none"><span class="prk">한 런 최다 처치</span><span class="prv">17</span><span class="prd">8/18</span></div>
+    </div>
+
+    <div class="glass" style="border-radius: 20px; padding: 16px; margin-top: 11px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 13px">
+        <div class="eyebrow">좀비 도감</div>
+        <div style="color: rgba(255,255,255,0.35); font-size: 10.5px; font-weight: 700">누적 처치 213</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px">
+
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div style="width: 56px; height: 62px; background: #0E1426; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; flex-shrink: 0">
+            <svg width="56" height="62" viewBox="-28 -50 56 62"><g transform="scale(0.42)"><ellipse rx="29.0" ry="9.5" fill="#7CFF5B" opacity="0.22"/><ellipse rx="14.0" ry="4.6" fill="#7CFF5B" opacity="0.418"/><filter id="zwrf042" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#7CFF5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#zwrf042)">
+    <path d="M-4,-28 Q-7,-18 -6.5,-10 Q-6,-5 -7,-2.5" stroke="#2E3444" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5,-28 Q8,-19 8,-11 Q8,-6 9,-2.5" stroke="#2E3444" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-7,-2.5 Q-11,-1.6 -13,-2.8" stroke="#2E3444" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M9,-2.5 Q13,-1.6 15,-2.8" stroke="#2E3444" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-11,-30 Q-13,-40 -9,-47 Q0,-50.5 9,-47 Q13,-40 11,-30 L8.5,-23 L6,-29 L3,-21.5 L0,-28.5 L-3,-22 L-6,-29 L-8.5,-23 Z" fill="#3B4258"/>
+    <path d="M4,-48 Q11,-44 11.5,-33 L10.5,-26 L8,-30 Z" fill="#262C3E"/>
+    <path d="M-9.5,-45 Q-16,-42 -17,-36" stroke="#3B4258" stroke-width="7.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M9.5,-45 Q16,-42 17,-36" stroke="#3B4258" stroke-width="7.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-17,-36 L-17.5,-33" stroke="#8C9179" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M17,-36 L17.5,-33" stroke="#8C9179" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="-17.5" cy="-32" r="5.4" fill="#8C9179"/>
+    <circle cx="17.5" cy="-32" r="5.4" fill="#8C9179"/>
+    <path d="M-21,-34.5 L-24,-33" stroke="#8C9179" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-21.5,-32 L-25,-31.5" stroke="#8C9179" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M21,-34.5 L24,-33" stroke="#8C9179" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5,-32 L25,-31.5" stroke="#8C9179" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0,-46 Q0.5,-49.5 1,-51.5" stroke="#3E4234" stroke-width="6.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(1.5 -56.5) scale(1.02)">
+      <path d="M-8.2,-8.4 Q0,-11.4 8.2,-8.4 Q9.8,-3.2 6.4,1.2 Q0,3.4 -6.4,1.2 Q-9.8,-3.2 -8.2,-8.4 Z" fill="#8C9179"/>
+      <path d="M3.8,-10 Q9,-7 7.6,-1.2 Q5.8,1.6 3,2.4 Q6,-3.4 3.8,-10 Z" fill="#5A5F4C"/>
+      <path d="M-4.4,0.2 Q0,1.4 4.4,0.2 Q3.8,6.4 0,6.8 Q-3.8,6.4 -4.4,0.2 Z" fill="#171A12"/>
+      <path d="M-5.4,1.6 Q-4.2,7.4 0,7.8 Q4.2,7.4 5.4,1.6 Q0,4.2 -5.4,1.6 Z" fill="#5A5F4C"/>
+      <path d="M-6.4,-5.4 Q-3.6,-6.6 -1.4,-5.2 Q-2.6,-1.8 -5.2,-2 Q-6.8,-3 -6.4,-5.4 Z" fill="#171A12"/>
+      <path d="M6.4,-5.4 Q3.6,-6.6 1.4,-5.2 Q2.6,-1.8 5.2,-2 Q6.8,-3 6.4,-5.4 Z" fill="#171A12"/>
+      <circle cx="-4" cy="-4" r="1.15" fill="#DFFFCF"/>
+      <circle cx="4" cy="-4" r="1.15" fill="#DFFFCF"/>
+    </g></g></g></svg>
+          </div>
+          <div style="flex-grow: 1">
+            <div style="display: flex; align-items: baseline; justify-content: space-between">
+              <span style="color: #fff; font-size: 13px; font-weight: 800">워커</span>
+              <span style="color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums">142</span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.07); margin-top: 6px">
+              <div style="width: 100%; height: 6px; border-radius: 3px; background: #1795C2"></div>
+            </div>
+            <div style="color: rgba(255,255,255,0.32); font-size: 10px; font-weight: 600; margin-top: 4px">3km/h · 가장 흔하다</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div style="width: 56px; height: 62px; background: #0E1426; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; flex-shrink: 0">
+            <svg width="56" height="62" viewBox="-28 -50 56 62"><g transform="scale(0.42)"><ellipse rx="27.5" ry="9.0" fill="#7CFF5B" opacity="0.22"/><ellipse rx="13.3" ry="4.4" fill="#7CFF5B" opacity="0.418"/><filter id="znrf042" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#7CFF5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#znrf042)">
+    <path d="M-4,-29 Q-9,-21 -11,-13 Q-12,-8 -14,-5" stroke="#35302A" stroke-width="7.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5,-29 Q8,-21 9,-14 Q9.5,-9 10,-5" stroke="#35302A" stroke-width="7.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-14,-5 Q-18,-4 -20,-5.6" stroke="#35302A" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10,-5 Q14,-4 16,-5.6" stroke="#35302A" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-11,-31 Q-13.5,-41 -9,-49 Q0,-52.5 9,-49 Q13.5,-41 11,-31 L8,-24 L5,-30 L2,-22 L-1,-29 L-4,-22.5 L-7,-30 L-9,-24 Z" fill="#4E3A2A"/>
+    <path d="M4,-50 Q11.5,-45 12,-34 L10.5,-27 L8,-31 Z" fill="#32251A"/>
+    <path d="M-10,-47 Q-19,-44 -21,-37" stroke="#4E3A2A" stroke-width="7.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="-21.5" cy="-32.5" r="6.2" fill="#8C9179"/>
+    <path d="M-25.5,-35.5 L-29,-34" stroke="#8C9179" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-26,-32.5 L-30,-32" stroke="#8C9179" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-25,-29.5 L-28.5,-27.5" stroke="#8C9179" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10,-47 Q19,-43 22,-36" stroke="#32251A" stroke-width="6.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22,-36 Q24,-31 22.5,-27" stroke="#3E4234" stroke-width="5.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M24.5,-24.5 L26.5,-21" stroke="#3E4234" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5,-24 L21.5,-20.5" stroke="#3E4234" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0,-48 Q0.5,-51 1,-52.5" stroke="#3E4234" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(1.5 -57) scale(0.97)">
+      <path d="M-8.2,-8.4 Q0,-11.4 8.2,-8.4 Q9.8,-3.2 6.4,1.2 Q0,3.4 -6.4,1.2 Q-9.8,-3.2 -8.2,-8.4 Z" fill="#8C9179"/>
+      <path d="M3.8,-10 Q9,-7 7.6,-1.2 Q5.8,1.6 3,2.4 Q6,-3.4 3.8,-10 Z" fill="#5A5F4C"/>
+      <path d="M-4.4,0.2 Q0,1.4 4.4,0.2 Q3.8,6.4 0,6.8 Q-3.8,6.4 -4.4,0.2 Z" fill="#171A12"/>
+      <path d="M-5.4,1.6 Q-4.2,7.4 0,7.8 Q4.2,7.4 5.4,1.6 Q0,4.2 -5.4,1.6 Z" fill="#5A5F4C"/>
+      <path d="M-6.4,-5.4 Q-3.6,-6.6 -1.4,-5.2 Q-2.6,-1.8 -5.2,-2 Q-6.8,-3 -6.4,-5.4 Z" fill="#171A12"/>
+      <path d="M6.4,-5.4 Q3.6,-6.6 1.4,-5.2 Q2.6,-1.8 5.2,-2 Q6.8,-3 6.4,-5.4 Z" fill="#171A12"/>
+      <circle cx="-4" cy="-4" r="1.15" fill="#DFFFCF"/>
+      <circle cx="4" cy="-4" r="1.15" fill="#DFFFCF"/>
+    </g></g></g></svg>
+          </div>
+          <div style="flex-grow: 1">
+            <div style="display: flex; align-items: baseline; justify-content: space-between">
+              <span style="color: #fff; font-size: 13px; font-weight: 800">러너</span>
+              <span style="color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums">48</span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.07); margin-top: 6px">
+              <div style="width: 34%; height: 6px; border-radius: 3px; background: #1795C2"></div>
+            </div>
+            <div style="color: rgba(255,255,255,0.32); font-size: 10px; font-weight: 600; margin-top: 4px">12km/h · 고강도 시간의 대부분</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div style="width: 56px; height: 62px; background: #0E1426; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; flex-shrink: 0">
+            <svg width="56" height="62" viewBox="-28 -50 56 62"><g transform="scale(0.42)"><ellipse rx="33.3" ry="10.9" fill="#7CFF5B" opacity="0.22"/><ellipse rx="16.1" ry="5.3" fill="#7CFF5B" opacity="0.418"/><filter id="zsrf042" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#7CFF5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#zsrf042)">
+    <path d="M-7,-16 Q-13,-11 -15,-5 Q-16,-3 -18,-2" stroke="#262E2B" stroke-width="6.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8,-16 Q14,-11 16,-5 Q17,-3 19,-2" stroke="#262E2B" stroke-width="6.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-18,-2 Q-22,-1.4 -24,-3" stroke="#262E2B" stroke-width="5.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M19,-2 Q23,-1.4 25,-3" stroke="#262E2B" stroke-width="5.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-13,-17 Q-17,-27 -9,-33 Q0,-36 9,-33 Q17,-27 13,-17 L10,-11 L7,-16 L3.5,-9.5 L0,-15.5 L-3.5,-10 L-7,-16 L-10,-11 Z" fill="#2F3A36"/>
+    <path d="M5,-34 Q15,-28 13.5,-19 L11,-12 L8.5,-16 Z" fill="#1E2523"/>
+    <path d="M-11,-31 Q-23,-26 -27,-16" stroke="#2F3A36" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M11,-31 Q23,-26 27,-16" stroke="#2F3A36" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-27,-16 Q-30,-11 -30,-6" stroke="#8C9179" stroke-width="4.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M27,-16 Q30,-11 30,-6" stroke="#8C9179" stroke-width="4.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-32,-5 L-34,-1.5" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-29.5,-4.5 L-30,-0.8" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M32,-5 L34,-1.5" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M29.5,-4.5 L30,-0.8" stroke="#8C9179" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0,-32 Q0,-35 0,-37" stroke="#3E4234" stroke-width="4.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(0 -41.5) scale(0.9)">
+      <path d="M-8.2,-8.4 Q0,-11.4 8.2,-8.4 Q9.8,-3.2 6.4,1.2 Q0,3.4 -6.4,1.2 Q-9.8,-3.2 -8.2,-8.4 Z" fill="#8C9179"/>
+      <path d="M3.8,-10 Q9,-7 7.6,-1.2 Q5.8,1.6 3,2.4 Q6,-3.4 3.8,-10 Z" fill="#5A5F4C"/>
+      <path d="M-4.4,0.2 Q0,1.4 4.4,0.2 Q3.8,6.4 0,6.8 Q-3.8,6.4 -4.4,0.2 Z" fill="#171A12"/>
+      <path d="M-5.4,1.6 Q-4.2,7.4 0,7.8 Q4.2,7.4 5.4,1.6 Q0,4.2 -5.4,1.6 Z" fill="#5A5F4C"/>
+      <path d="M-6.4,-5.4 Q-3.6,-6.6 -1.4,-5.2 Q-2.6,-1.8 -5.2,-2 Q-6.8,-3 -6.4,-5.4 Z" fill="#171A12"/>
+      <path d="M6.4,-5.4 Q3.6,-6.6 1.4,-5.2 Q2.6,-1.8 5.2,-2 Q6.8,-3 6.4,-5.4 Z" fill="#171A12"/>
+      <circle cx="-4" cy="-4" r="1.15" fill="#DFFFCF"/>
+      <circle cx="4" cy="-4" r="1.15" fill="#DFFFCF"/>
+    </g></g></g></svg>
+          </div>
+          <div style="flex-grow: 1">
+            <div style="display: flex; align-items: baseline; justify-content: space-between">
+              <span style="color: #fff; font-size: 13px; font-weight: 800">스토커</span>
+              <span style="color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums">19</span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.07); margin-top: 6px">
+              <div style="width: 13%; height: 6px; border-radius: 3px; background: #1795C2"></div>
+            </div>
+            <div style="color: rgba(255,255,255,0.32); font-size: 10px; font-weight: 600; margin-top: 4px">7km/h · 전방위 감지</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div style="width: 56px; height: 62px; background: #0E1426; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; flex-shrink: 0">
+            <svg width="56" height="62" viewBox="-28 -50 56 62"><g transform="scale(0.4)"><ellipse rx="39.2" ry="12.8" fill="#7CFF5B" opacity="0.22"/><ellipse rx="18.9" ry="6.2" fill="#7CFF5B" opacity="0.418"/><filter id="zbrf04" x="-50%" y="-25%" width="200%" height="150%">
+         <feDropShadow dx="0" dy="0" stdDeviation="2.6" flood-color="#7CFF5B" flood-opacity="0.38"/>
+       </filter><g filter="url(#zbrf04)">
+    <path d="M-7,-32 Q-12,-22 -12,-13 Q-12,-8 -14,-4" stroke="#332622" stroke-width="10.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8,-32 Q13,-22 13,-13 Q13,-8 15,-4" stroke="#332622" stroke-width="10.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-14,-4 Q-19,-2.6 -22,-4" stroke="#332622" stroke-width="8.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M15,-4 Q20,-2.6 23,-4" stroke="#332622" stroke-width="8.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-19,-33 Q-23,-46 -13,-55 Q0,-59.5 13,-55 Q23,-46 19,-33 L15,-25 L11,-32 L6,-23 L0,-30.5 L-6,-23 L-11,-32 L-15,-25 Z" fill="#48302B"/>
+    <path d="M7,-56 Q21,-47 18,-34 L15,-26 L12,-32 Z" fill="#2E1D1A"/>
+    <path d="M-17,-51 Q-28,-44 -29,-33" stroke="#48302B" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17,-51 Q28,-44 29,-33" stroke="#48302B" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-29,-33 Q-29.5,-27 -28,-22" stroke="#8C9179" stroke-width="8.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M29,-33 Q29.5,-27 28,-22" stroke="#8C9179" stroke-width="8.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-31,-19 L-33,-15" stroke="#8C9179" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-27.5,-18.5 L-28,-14" stroke="#8C9179" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M31,-19 L33,-15" stroke="#8C9179" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M27.5,-18.5 L28,-14" stroke="#8C9179" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0,-54 Q0,-56.5 0,-58" stroke="#3E4234" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(0 -62) scale(0.84)">
+      <path d="M-8.2,-8.4 Q0,-11.4 8.2,-8.4 Q9.8,-3.2 6.4,1.2 Q0,3.4 -6.4,1.2 Q-9.8,-3.2 -8.2,-8.4 Z" fill="#8C9179"/>
+      <path d="M3.8,-10 Q9,-7 7.6,-1.2 Q5.8,1.6 3,2.4 Q6,-3.4 3.8,-10 Z" fill="#5A5F4C"/>
+      <path d="M-4.4,0.2 Q0,1.4 4.4,0.2 Q3.8,6.4 0,6.8 Q-3.8,6.4 -4.4,0.2 Z" fill="#171A12"/>
+      <path d="M-5.4,1.6 Q-4.2,7.4 0,7.8 Q4.2,7.4 5.4,1.6 Q0,4.2 -5.4,1.6 Z" fill="#5A5F4C"/>
+      <path d="M-6.4,-5.4 Q-3.6,-6.6 -1.4,-5.2 Q-2.6,-1.8 -5.2,-2 Q-6.8,-3 -6.4,-5.4 Z" fill="#171A12"/>
+      <path d="M6.4,-5.4 Q3.6,-6.6 1.4,-5.2 Q2.6,-1.8 5.2,-2 Q6.8,-3 6.4,-5.4 Z" fill="#171A12"/>
+      <circle cx="-4" cy="-4" r="1.15" fill="#DFFFCF"/>
+      <circle cx="4" cy="-4" r="1.15" fill="#DFFFCF"/>
+    </g></g></g></svg>
+          </div>
+          <div style="flex-grow: 1">
+            <div style="display: flex; align-items: baseline; justify-content: space-between">
+              <span style="color: #fff; font-size: 13px; font-weight: 800">브루트</span>
+              <span style="color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums">4</span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.07); margin-top: 6px">
+              <div style="width: 3%; height: 6px; border-radius: 3px; background: #1795C2"></div>
+            </div>
+            <div style="color: rgba(255,255,255,0.32); font-size: 10px; font-weight: 600; margin-top: 4px">5km/h · 한 방에 30</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass" style="border-radius: 20px; padding: 16px; margin-top: 11px">
+      <div class="eyebrow" style="margin-bottom: 13px">달성</div>
+      <div style="display: flex; gap: 10px">
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 12px 6px; border-radius: 14px; background: rgba(255,197,61,0.10); border: 1px solid rgba(255,197,61,0.3)">
+          <div style="color: #FFC53D; font-size: 20px; font-weight: 800">7</div>
+          <div style="color: rgba(255,255,255,0.5); font-size: 9.5px; font-weight: 700; margin-top: 3px">주 연속</div>
+        </div>
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 12px 6px; border-radius: 14px; background: rgba(23,149,194,0.10); border: 1px solid rgba(23,149,194,0.3)">
+          <div style="color: #2FD9FF; font-size: 20px; font-weight: 800">100</div>
+          <div style="color: rgba(255,255,255,0.5); font-size: 9.5px; font-weight: 700; margin-top: 3px">km 돌파</div>
+        </div>
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 12px 6px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09)">
+          <div style="color: rgba(255,255,255,0.3); font-size: 20px; font-weight: 800">200</div>
+          <div style="color: rgba(255,255,255,0.28); font-size: 9.5px; font-weight: 700; margin-top: 3px">km 돌파</div>
+        </div>
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 12px 6px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09)">
+          <div style="color: rgba(255,255,255,0.3); font-size: 20px; font-weight: 800">75</div>
+          <div style="color: rgba(255,255,255,0.28); font-size: 9.5px; font-weight: 700; margin-top: 3px">주 고강도</div>
+        </div>
+      </div>
+      <div style="color: rgba(255,255,255,0.32); font-size: 10.5px; line-height: 16px; margin-top: 12px">
+        달성은 전부 거리와 꾸준함으로만 준다. 처치 수로는 주지 않는다. 좀비를 잡으려고 한자리를 맴돌면 운동이 되지 않는다.
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -13,15 +13,22 @@ import { Config } from '../config';
 import { HeadingFilter } from '../core/headingFilter';
 import { ClipPlayer } from '../core/zombieClips';
 import { artState, artType, pickView } from '../components/zombieArt';
+import { PLANE } from '../components/zombieArtSpec';
 import { jointPose, PuppetPart, puppetParts } from '../components/zombiePuppet';
 import type { PartName } from '../components/zombieRig';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { A, C, F, R } from '../ui/theme';
+import { A, C, F, R, useSafePad } from '../ui/theme';
 import { Glass, StatBar } from '../ui/components';
 
 /** AR 최소 렌더 거리 — 이보다 가까운 좀비도 이 거리에 서 있는 것처럼 그린다 */
 const MIN_AR_DIST = Config.arMinDistanceM;
+/** 표시 최소 분리 거리 — 어떤 경우에도 이보다 가까이 그리지 않는다 (겹침 금지) */
+const MIN_SEP = Config.arMinSeparationM;
+/** 이 반경 안의 좀비는 눈높이로 끌어올린다. 2배 거리에서 0으로 풀린다 */
+const EYE_R = Config.arEyeLevelRadiusM;
+/** 카메라(눈) 높이 — camera.position.set 의 y와 반드시 같아야 한다 */
+const EYE_Y = Config.arEyeHeightM;
 /** 나침반·자이로 평활 강도 (1/s). 낮을수록 부드럽고 반응이 늦다 */
 const SENSOR_SMOOTH = Config.arSensorSmoothing;
 /** 좀비 위치 보간 강도 (1/s) */
@@ -48,6 +55,7 @@ interface Props {
 }
 
 export default function ArScreen({ game, snap, onExit }: Props) {
+  const safe = useSafePad();
   const [permission, requestPermission] = useCameraPermissions();
   // 센서 원값(Raw)과 화면에 쓰는 평활값을 분리한다.
   // 나침반·자이로는 원값이 매 샘플 몇 도씩 떨리는데, 그대로 카메라에 넣으면
@@ -176,7 +184,7 @@ export default function ArScreen({ game, snap, onExit }: Props) {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
       62, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 500);
-    camera.position.set(0, 1.6, 0);
+    camera.position.set(0, EYE_Y, 0); // 눈높이 정렬(eyeLift)이 같은 값을 기준으로 삼는다
     camera.rotation.order = 'YXZ';
 
     /*
@@ -340,23 +348,55 @@ export default function ArScreen({ game, snap, onExit }: Props) {
         let wx = zv.x - p.x;                   // 동 = +x
         let wz = -(zv.y - p.y);                // 북 = -z
 
-        // 최소 렌더 거리: 공격 사거리(0.5m)까지 붙으면 카메라 안으로 들어가 형체가 안 보인다.
-        // 방위는 유지한 채 거리만 밀어내 전신이 보이게 하고, 가까울수록 크기로 위협을 표현.
+        /*
+          최소 렌더 거리: 공격 사거리(0.5m)까지 붙으면 카메라 안으로 들어가 형체가 안 보인다.
+          방위는 유지한 채 거리만 밀어내 전신이 보이게 하고, 가까울수록 크기로 위협을 표현.
+
+          ※ 예전에는 `dTrue > 0.01` 일 때만 밀어냈다. 그래서 좀비가 플레이어 좌표에
+            정확히 겹치면 밀어내기가 통째로 건너뛰어져 카메라 원점에 그대로 남았다 —
+            "좀비가 내 밑에 있다 / 나와 겹쳐 있다"의 원인. 이제는 방향이 없을 때
+            개체 고정 방위를 만들어 붙여 **언제나** 밖으로 밀어낸다.
+        */
         const dTrue = Math.hypot(wx, wz);
-        let closeScale = 1;
-        if (dTrue > 0.01 && dTrue < MIN_AR_DIST) {
-          const k = MIN_AR_DIST / dTrue;
-          wx *= k;
-          wz *= k;
-          closeScale = 1 + (1 - dTrue / MIN_AR_DIST) * 0.35;
+        let ux: number, uz: number;
+        if (dTrue > 1e-3) {
+          ux = wx / dTrue;
+          uz = wz / dTrue;
+        } else {
+          const a = zv.id * 2.399963; // 황금각 — id마다 다른 방위
+          ux = Math.sin(a);
+          uz = -Math.cos(a);
         }
+        // 어떤 경우에도 MIN_SEP 아래로는 그리지 않는다 (.env로 MIN_AR_DIST를 0으로 둬도 유지)
+        const dShow = Math.max(MIN_SEP, MIN_AR_DIST, dTrue);
+        wx = ux * dShow;
+        wz = uz * dShow;
+        const closeScale = dTrue < MIN_AR_DIST
+          ? 1 + (1 - Math.max(0, dTrue) / MIN_AR_DIST) * 0.35
+          : 1;
+
+        /*
+          눈높이 정렬 — 코앞의 좀비를 화면 중앙(조준선) 높이로 끌어올린다.
+
+           좀비는 지면(y=0)에 서고 카메라는 눈높이(1.6m)에 있다. 멀리 있을 때는
+           내려다보는 각이 작아 문제가 없지만, 가까워질수록 급격히 커져서
+           2m 앞의 좀비는 시야 한참 아래(≈17°)에 깔린다. 폰을 수직으로 들면
+           좀비가 화면 밖으로 사라지거나 발밑에 뭉쳐 보이는 이유다.
+
+           EYE_R 안에서는 판 중심을 눈높이에 맞추고, 2×EYE_R 에서 0으로 풀어
+           경계에서 위치가 튀지 않게 한다.
+        */
+        const eyeK = EYE_R > 0
+          ? Math.max(0, Math.min(1, (EYE_R * 2 - dTrue) / EYE_R))
+          : 0;
+        const eyeLift = eyeK * (EYE_Y - PLANE.centerYM);
 
         const aggro = zv.state === 'chase';
         const dying = zv.state === 'dead';
         // 레이어 높이차. 0이면 고정 — 플레이어 레이어는 GPS 맵매칭으로 정해져서
         // 육교·지하 경계에서 흔들리는데, 그때마다 좀비 전체가 위아래로 튄다.
         const layerY = (zv.layer - playerLayer) * LAYER_H;
-        const target = new THREE.Vector3(wx, layerY, wz);
+        const target = new THREE.Vector3(wx, layerY + eyeLift, wz);
 
         let entry = meshes.get(zv.id);
         if (!entry) {
@@ -694,7 +734,7 @@ export default function ArScreen({ game, snap, onExit }: Props) {
       )}
 
       {/* 하단 조작 — 사격은 화면 탭이므로 버튼은 이탈 하나뿐이다 (design/v2 Ar) */}
-      <View style={st.bottomBar}>
+      <View style={[st.bottomBar, { bottom: 38 + safe.navBar }]}>
         <Pressable onPress={onExit} style={{ flex: 1 }}>
           <LinearGradient colors={['rgba(62,78,126,0.92)', 'rgba(24,32,58,0.94)']} style={st.pillBtn}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.white}

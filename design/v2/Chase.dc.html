@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+
+    body { margin: 0; background: #070A14;
+      font-family: "Outfit", -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #2FD9FF; text-decoration: none; }
+    a:hover { color: #8BE9FF; }
+    .glass { background: rgba(11,16,32,0.74); border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+    .stat-lbl { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.48); }
+    .stat-val { font-size: 27px; font-weight: 800; color: #fff; line-height: 29px; letter-spacing: -0.8px;
+      font-variant-numeric: tabular-nums; }
+    .stat-unit { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); margin-left: 1px; }
+    .stat-sub { font-size: 9.5px; font-weight: 600; color: rgba(255,255,255,0.52); margin-top: 3px;
+      font-variant-numeric: tabular-nums; }
+    .divider { width: 1px; align-self: stretch; margin: 4px 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%); }
+    .rbtn { width: 58px; height: 58px; border-radius: 29px;
+      background: linear-gradient(180deg, rgba(62,78,126,0.92) 0%, rgba(24,32,58,0.94) 100%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.22);
+      display: flex; align-items: center; justify-content: center; position: relative; }
+    .rbtn-cap { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center;
+      font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.62); letter-spacing: 0.4px; }
+    .cta { border-radius: 16px; padding: 17px; text-align: center; font-size: 16px; font-weight: 800; color: #062330;
+      background: linear-gradient(180deg, #5FE4FF 0%, #0E96D2 100%);
+      border: 1px solid rgba(255,255,255,0.42);
+      box-shadow: 0 10px 26px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.45); }
+    .ghost { border-radius: 16px; padding: 15px; text-align: center; font-size: 14.5px; font-weight: 700; color: #fff;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); }
+    .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase;
+      color: rgba(255,255,255,0.42); }
+
+  </style>
+</helmet>
+
+<div style="width:390px;height:844px;background:#070A14;overflow:hidden;position:relative;display:flex;flex-direction:column">
+  <div style="padding:62px 22px 0;flex-shrink:0">
+    <div class="eyebrow">최근 8주</div>
+    <div style="color:#fff;font-size:27px;font-weight:800;letter-spacing:-0.8px;margin-top:6px">추격이 만든 훈련</div>
+    <div style="color:rgba(255,255,255,0.42);font-size:12px;line-height:18px;margin-top:8px">
+      좀비에게 쫓기는 구간이 곧 고강도 인터벌이다. 따로 계획하지 않아도 매주 쌓인다.
+    </div>
+  </div>
+
+  <div style="padding:16px 22px 26px;flex-grow:1;overflow:hidden">
+
+    <div class="glass" style="border-radius:20px;padding:16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+        <div class="eyebrow">주간 평균 속도 <span style="color:rgba(255,255,255,0.3)">km/h</span></div>
+      </div>
+      <div style="display:flex;gap:14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:14px;height:3px;border-radius:2px;background:#FF2E5B"></div>
+          <span style="color:rgba(255,255,255,0.42);font-size:10px;font-weight:700">추격 중</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:14px;height:3px;border-radius:2px;background:#1795C2"></div>
+          <span style="color:rgba(255,255,255,0.42);font-size:10px;font-weight:700">평시</span>
+        </div>
+      </div>
+      <svg width="326" height="148" viewBox="0 0 326 148">
+    <line x1="16" y1="115.6" x2="326" y2="115.6" stroke="rgba(255,255,255,0.07)"/>
+     <text x="0" y="118.6" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">8</text><line x1="16" y1="86.7" x2="326" y2="86.7" stroke="rgba(255,255,255,0.07)"/>
+     <text x="0" y="89.7" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">10</text><line x1="16" y1="57.8" x2="326" y2="57.8" stroke="rgba(255,255,255,0.07)"/>
+     <text x="0" y="60.8" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">12</text><line x1="16" y1="28.9" x2="326" y2="28.9" stroke="rgba(255,255,255,0.07)"/>
+     <text x="0" y="31.9" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">14</text><line x1="16" y1="0.0" x2="326" y2="0.0" stroke="rgba(255,255,255,0.07)"/>
+     <text x="0" y="3.0" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">16</text>
+    <path d="M16.0,46.2L59.4,41.9L102.9,37.6L146.3,40.4L189.7,30.3L233.1,26.0L276.6,23.1L320.0,15.9" fill="none" stroke="#FF2E5B" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M16.0,109.8L59.4,106.9L102.9,105.4L146.3,102.6L189.7,99.7L233.1,98.2L276.6,93.9L320.0,89.6" fill="none" stroke="#1795C2" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="16.0" cy="46.2" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="59.4" cy="41.9" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="102.9" cy="37.6" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="146.3" cy="40.4" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="189.7" cy="30.3" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="233.1" cy="26.0" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="276.6" cy="23.1" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="320.0" cy="15.9" r="3" fill="#FF2E5B" stroke="#0E1426" stroke-width="2"/><circle cx="16.0" cy="109.8" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="59.4" cy="106.9" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="102.9" cy="105.4" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="146.3" cy="102.6" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="189.7" cy="99.7" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="233.1" cy="98.2" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="276.6" cy="93.9" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/><circle cx="320.0" cy="89.6" r="3" fill="#1795C2" stroke="#0E1426" stroke-width="2"/>
+    <text x="316.0" y="7.9" text-anchor="end" fill="#FF2E5B"
+      font-size="10" font-weight="800" font-family="Outfit, sans-serif">추격 14.9</text>
+    <text x="316.0" y="104.6" text-anchor="end" fill="#1795C2"
+      font-size="10" font-weight="800" font-family="Outfit, sans-serif">평시 9.8</text>
+    <text x="16" y="145" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">7/21</text>
+    <text x="326" y="145" text-anchor="end" fill="rgba(255,255,255,0.42)" font-size="8.5" font-weight="700" font-family="Outfit, sans-serif">9/8</text>
+  </svg>
+      <div style="color:rgba(255,255,255,0.42);font-size:11px;line-height:17px;margin-top:8px">
+        8주 동안 평시 속도가 8.4에서 9.8로 올랐다. 추격 중 속도가 먼저 오르고 평시가 따라온다.
+      </div>
+    </div>
+
+    <div class="glass" style="border-radius:20px;padding:16px;margin-top:11px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div class="eyebrow" style="color:#FF7D9B">주간 고강도 시간</div>
+        <div style="color:#7CFF5B;font-size:10.5px;font-weight:800">8주 만에 2.6배</div>
+      </div>
+      <div style="margin-top:10px"><svg width="326" height="90" viewBox="0 0 326 90">
+    <rect x="0.0" y="48.4" width="28" height="25.6" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="42.6" y="39.8" width="28" height="34.2" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="85.1" y="34.2" width="28" height="39.8" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="127.7" y="37.0" width="28" height="37.0" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="170.3" y="25.6" width="28" height="48.4" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="212.9" y="19.9" width="28" height="54.1" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="255.4" y="14.2" width="28" height="59.8" rx="4" fill="rgba(255,46,91,0.4)"/><rect x="298.0" y="5.7" width="28" height="68.3" rx="4" fill="#FF2E5B"/>
+    <text x="312.0" y="88" text-anchor="middle" fill="#FF2E5B"
+      font-size="9.5" font-weight="800" font-family="Outfit, sans-serif">24분</text>
+  </svg></div>
+      <div style="color:rgba(255,255,255,0.42);font-size:11px;line-height:17px;margin-top:6px">
+        세계보건기구 권고는 주 75분 고강도다. 지금 24분이니 아직 3분의 1이다.
+      </div>
+    </div>
+
+    <div class="glass" style="border-radius:20px;padding:16px;margin-top:11px;border-color:rgba(47,217,255,0.26)">
+      <div class="eyebrow" style="color:#2FD9FF">다음 주 난이도</div>
+      <div style="display:flex;align-items:center;gap:13px;margin-top:11px">
+        <div style="flex-grow:1">
+          <div style="color:#fff;font-size:14px;font-weight:800">러너 속도 12.0 → 12.6 km/h</div>
+          <div style="color:rgba(255,255,255,0.42);font-size:11px;line-height:17px;margin-top:4px">
+            최근 4주 평균 속도가 올라서 좀비도 같이 빨라진다. 항상 아슬아슬하게 도망칠 수 있는 선을 유지한다.
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+        <div style="flex-grow:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.08);position:relative">
+          <div style="width:62%;height:6px;border-radius:3px;background:#1795C2"></div>
+          <div style="position:absolute;left:68%;top:-4px;width:3px;height:14px;border-radius:2px;background:#FF2E5B"></div>
+        </div>
+        <span style="color:rgba(255,255,255,0.42);font-size:10px;font-weight:700">내 속도 · 좀비</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

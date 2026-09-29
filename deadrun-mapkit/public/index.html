@@ -219,7 +219,7 @@ let pollTimer = null, currentJob = null;
 $('btnBake').onclick = async () => {
   const body = {
     bbox: readBBox(), zoom: +$('zoom').value, version: $('version').value.trim() || 'v1',
-    buildings: $('buildings').checked, resume: $('resume').checked, delayMs: 400,
+    buildings: $('buildings').checked, resume: $('resume').checked, delayMs: 1200,
   };
   const r = await fetch('/api/bake', { method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(body) }).then(r => r.json());

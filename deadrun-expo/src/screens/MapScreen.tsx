@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from '
 import { View, Text, Pressable, StyleSheet, useWindowDimensions, PanResponder } from 'react-native';
 import Svg, {
   Circle, Path, G, Defs, LinearGradient as SvgGrad, RadialGradient, Stop, Rect, Ellipse,
+  Text as SvgText,
 } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -12,7 +13,7 @@ import { Vec2 } from '../core/geo';
 import { Rules } from '../core/rules';
 import { Config } from '../config';
 import { useHeading } from '../hooks/useHeading';
-import { A, C, F, R as RAD, T } from '../ui/theme';
+import { A, C, F, R as RAD, T, useSafePad } from '../ui/theme';
 import { Glass, StatBar } from '../ui/components';
 
 /**
@@ -83,35 +84,148 @@ function FacingCone({ x, y, headingDeg, len, color, fovDeg = 74 }: {
  * 도로와 마찬가지로 서브패스로 합쳐 하나의 <Path>로 그린다.
  * version이 바뀔 때만 다시 만든다(로드 완료 시 1회).
  */
-const Buildings = memo(function Buildings({ polys }: { polys: Vec2[][]; version: number }) {
-  const d = useMemo(() => {
-    const parts: string[] = [];
-    for (const p of polys) {
+const Buildings = memo(function Buildings({ polys, safe }: {
+  polys: Vec2[][];
+  /** polys 와 같은 순서 — 안전 구역인가. 없으면 전부 일반 건물로 그린다 */
+  safe: boolean[] | null;
+  version: number;
+}) {
+  // 일반/안전 두 벌로 나눠 서브패스를 합친다 — 색이 둘뿐이라 Path도 둘이면 된다
+  const [dNormal, dSafe] = useMemo(() => {
+    const normal: string[] = [];
+    const green: string[] = [];
+    for (let i = 0; i < polys.length; i++) {
+      const p = polys[i];
       if (p.length < 3) continue;
-      parts.push(`M${p[0].x.toFixed(1)} ${(-p[0].y).toFixed(1)}`);
-      for (let i = 1; i < p.length; i++) parts.push(`L${p[i].x.toFixed(1)} ${(-p[i].y).toFixed(1)}`);
-      parts.push('Z');
+      const into = safe?.[i] ? green : normal;
+      into.push(`M${p[0].x.toFixed(1)} ${(-p[0].y).toFixed(1)}`);
+      for (let j = 1; j < p.length; j++)
+        into.push(`L${p[j].x.toFixed(1)} ${(-p[j].y).toFixed(1)}`);
+      into.push('Z');
     }
-    return parts.join('');
-  }, [polys]);
-  if (!d) return null;
-  return <Path d={d} fill="#151C30" stroke="#1E2740" strokeWidth={0.6} />;
+    return [normal.join(''), green.join('')];
+  }, [polys, safe]);
+  if (!dNormal && !dSafe) return null;
+  return (
+    <>
+      {!!dNormal && <Path d={dNormal} fill="#151C30" stroke="#1E2740" strokeWidth={0.6} />}
+      {/* 안전 구역 — 좀비가 들어오지 못하는 건물 */}
+      {!!dSafe && (
+        <Path d={dSafe} fill={C.green} fillOpacity={0.22}
+          stroke={C.green} strokeOpacity={0.75} strokeWidth={1.1} />
+      )}
+    </>
+  );
 }, (a, b) => a.version === b.version);
 
+/**
+ * 건물 이름 — 내 주변 몇 개만 띄운다.
+ *
+ *  구운 타일에는 이름 있는 건물이 반경 1km에 500개쯤 들어 있다. 전부 뿌리면
+ *  글자 범벅이 되고, 좀비·추격 정보라는 화면의 주인공이 묻힌다.
+ *  러너에게 쓸모 있는 것은 "지금 내 옆 건물이 무엇인가"라는 방향 감각이므로
+ *  가까운 것 몇 개로 충분하다.
+ *
+ *  겹침은 거리순으로 골라 최소 간격을 두는 것으로 처리한다 —
+ *  제대로 된 충돌 회피는 이 개수에서는 과하다.
+ */
+const BuildingLabels = memo(function BuildingLabels({
+  polys, names, center, radiusM, max, minGapM, fontM,
+}: {
+  polys: Vec2[][];
+  names: (string | undefined)[];
+  center: Vec2;
+  radiusM: number;
+  max: number;
+  /** 라벨끼리 이만큼은 떨어뜨린다 (m) */
+  minGapM: number;
+  /** 글자 크기 (m 단위 — 지도와 같이 확대·축소된다) */
+  fontM: number;
+  version: number;
+}) {
+  const picked = useMemo(() => {
+    const cand: { name: string; at: Vec2; d: number }[] = [];
+    for (let i = 0; i < polys.length; i++) {
+      const name = names[i];
+      if (!name) continue;
+      const poly = polys[i];
+      if (poly.length < 3) continue;
+      // 외곽선의 평균점 — 정확한 무게중심까지 갈 필요는 없다
+      let sx = 0, sy = 0;
+      for (const q of poly) { sx += q.x; sy += q.y; }
+      const at = { x: sx / poly.length, y: sy / poly.length };
+      const d = Math.hypot(at.x - center.x, at.y - center.y);
+      if (d <= radiusM) cand.push({ name, at, d });
+    }
+    cand.sort((a, b) => a.d - b.d);
+
+    const out: typeof cand = [];
+    for (const c of cand) {
+      if (out.length >= max) break;
+      if (out.some(o => Math.hypot(o.at.x - c.at.x, o.at.y - c.at.y) < minGapM)) continue;
+      out.push(c);
+    }
+    return out;
+  }, [polys, names, center.x, center.y, radiusM, max, minGapM]);
+
+  if (picked.length === 0) return null;
+  return (
+    <G>
+      {picked.map(b => (
+        <SvgText
+          key={`${b.name}-${b.at.x.toFixed(0)}-${b.at.y.toFixed(0)}`}
+          x={b.at.x}
+          y={-b.at.y}
+          textAnchor="middle"
+          fontSize={fontM}
+          fontFamily={F.sb}
+          fill="rgba(255,255,255,0.5)"
+        >
+          {b.name}
+        </SvgText>
+      ))}
+    </G>
+  );
+}, (a, b) => a.version === b.version
+  && Math.hypot(a.center.x - b.center.x, a.center.y - b.center.y) < 15
+  && a.radiusM === b.radiusM && a.fontM === b.fontM);
+
+/**
+ * 도로 — 보도와 차도를 나눠 그린다 (design/v2 osm-export.ts 의 3단 위계).
+ *
+ *  굽힌 지도(.drmp)에 highway 종류가 이미 들어 있는데 그동안 그래프를 만들며 버리고 있었다.
+ *  간선은 굵고 밝게, 이면도로는 얇게, **보행로는 초록 점선**이다 —
+ *  보행로는 좀비가 스폰되는 길이라 눈에 띄어야 한다.
+ *  고가는 앰버로 따로 표시한다(레이어가 달라 총이 안 닿는다).
+ *
+ *  선 굵기는 미터 단위다. 지도가 확대·축소돼도 실제 도로 폭처럼 보이게 하려는 것이다.
+ */
 const Roads = memo(function Roads({ graph }: { graph: RoadGraph }) {
   const paths = useMemo(() => {
-    const parts: Record<number, string[]> = { [-1]: [], 0: [], 1: [] };
-    for (const e of graph.edges) {
+    const seg = (e: typeof graph.edges[number]) => {
       const a = graph.nodes[e.a], b = graph.nodes[e.b];
-      const bucket = parts[e.layer] ?? parts[0];
-      bucket.push(
-        `M${a.x.toFixed(1)} ${(-a.y).toFixed(1)}L${b.x.toFixed(1)} ${(-b.y).toFixed(1)}`);
+      return `M${a.x.toFixed(1)} ${(-a.y).toFixed(1)}L${b.x.toFixed(1)} ${(-b.y).toFixed(1)}`;
+    };
+    const arterial: string[] = [], local: string[] = [], walk: string[] = [];
+    const under: string[] = [], elevated: string[] = [];
+    for (const e of graph.edges) {
+      if (e.layer === 1) { elevated.push(seg(e)); continue; }
+      if (e.layer === -1) { under.push(seg(e)); continue; }
+      (e.cls === 'arterial' ? arterial : e.cls === 'walk' ? walk : local).push(seg(e));
     }
+    const join = (a: string[]) => a.join('');
+    // 그리는 순서 = 아래에서 위로. 케이싱을 먼저 깔고 윗면을 덮는다
     return [
-      // 지하 · 지상 · 고가 — 고가만 앰버로 구분한다
-      { d: parts[-1].join(''), color: '#2C3450', w: 5 },
-      { d: parts[0].join(''), color: '#4A5573', w: 3.5 },
-      { d: parts[1].join(''), color: C.amber, w: 5 },
+      { d: join(under), color: '#2C3450', w: 5 },
+      { d: join(local), color: '#0D1428', w: 7 },
+      { d: join(arterial), color: '#0D1428', w: 13 },
+      { d: join(local), color: '#2A3760', w: 5 },
+      { d: join(arterial), color: '#38497C', w: 10 },
+      { d: join(arterial), color: '#546AB0', w: 1, dash: '6,7', opacity: 0.6 },
+      // 보행로 — 좀비가 스폰되는 길
+      { d: join(walk), color: C.green, w: 1.6, dash: '3,4', opacity: 0.45 },
+      { d: join(elevated), color: '#0A0F1F', w: 12 },
+      { d: join(elevated), color: C.amber, w: 8, opacity: 0.55 },
     ].filter(p => p.d.length > 0);
   }, [graph]);
 
@@ -119,7 +233,8 @@ const Roads = memo(function Roads({ graph }: { graph: RoadGraph }) {
     <G>
       {paths.map((p, i) => (
         <Path key={i} d={p.d} stroke={p.color} strokeWidth={p.w}
-          strokeLinecap="round" fill="none" />
+          strokeDasharray={p.dash} strokeOpacity={p.opacity ?? 1}
+          strokeLinecap="round" strokeLinejoin="round" fill="none" />
       ))}
     </G>
   );
@@ -133,6 +248,7 @@ interface Props {
 
 export default function MapScreen({ game, snap, onEnterAr }: Props) {
   const { width, height } = useWindowDimensions();
+  const safe = useSafePad();
   const [viewSpanM, setViewSpanM] = useState(180); // 화면 가로가 커버하는 미터 (기본 확대)
   const spanRef = useRef(viewSpanM);
   spanRef.current = viewSpanM;
@@ -229,9 +345,28 @@ export default function MapScreen({ game, snap, onEnterAr }: Props) {
 
         {/* 건물이 맨 아래, 그 위에 도로 */}
         {game.buildings.length > 0 && (
-          <Buildings polys={game.buildings} version={snap.buildingsVersion} />
+          <Buildings
+            polys={game.buildings}
+            safe={game.zoneIndex?.safe ?? null}
+            // 안전 구역 색인은 건물 뒤에 만들어지므로 둘 다 재렌더 조건에 넣는다
+            version={snap.buildingsVersion * 1000 + game.zoneVersion}
+          />
         )}
         {game.graph && <Roads graph={game.graph} />}
+
+        {/* 건물 이름 — 가까운 것 몇 개만 (방향 감각용) */}
+        {game.buildings.length > 0 && (
+          <BuildingLabels
+            polys={game.buildings}
+            names={game.buildingNames}
+            center={p}
+            radiusM={viewSpanM * 0.42}
+            max={6}
+            minGapM={viewSpanM * 0.13}
+            fontM={viewSpanM * 0.022}
+            version={snap.buildingsVersion}
+          />
+        )}
 
         {/* 레이더 링 — 점선 두 겹 (design/v2) */}
         <Circle cx={p.x} cy={-p.y} r={Rules.radarRange * 0.62} fill="none"
@@ -339,7 +474,7 @@ export default function MapScreen({ game, snap, onEnterAr }: Props) {
       </View>
 
       {/* 좌하단 현재 위치 */}
-      <Pressable style={s.locBtn} onPress={() => setPanOff({ x: 0, y: 0 })}>
+      <Pressable style={[s.locBtn, { bottom: 132 + safe.navBar }]} onPress={() => setPanOff({ x: 0, y: 0 })}>
         <Svg width={21} height={21} viewBox="0 0 24 24" fill="none"
           stroke={isPanned ? C.cyan : C.white} strokeWidth={2} strokeLinecap="round">
           <Circle cx={12} cy={12} r={5.6} />
@@ -350,7 +485,7 @@ export default function MapScreen({ game, snap, onEnterAr }: Props) {
 
       {/* 줌 — 디자인엔 핀치만 있으나 한 손 조작을 위해 남긴다 */}
       <Pressable
-        style={s.zoomPill}
+        style={[s.zoomPill, { bottom: 190 + safe.navBar }]}
         onPress={() => setViewSpanM(v => (v < 150 ? 180 : v < 250 ? 350 : v < 500 ? 600 : 120))}
       >
         <Text style={s.zoomText}>{viewSpanM.toFixed(0)}m</Text>
@@ -358,7 +493,7 @@ export default function MapScreen({ game, snap, onEnterAr }: Props) {
 
       {/* 우하단 주변 개체 트래커 — 점은 상태, 글자는 타입 */}
       {nearby.length > 0 && (
-        <Glass style={s.tracker} radius={RAD.lg}>
+        <Glass style={[s.tracker, { bottom: 128 + safe.navBar }]} radius={RAD.lg}>
           <Text style={[T.statLabel, { marginBottom: 8 }]}>주변</Text>
           {nearby.map(z => {
             const aggro = z.state === 'chase';
@@ -384,7 +519,7 @@ export default function MapScreen({ game, snap, onEnterAr }: Props) {
       )}
 
       {/* 하단 주 액션 — AR 진입 */}
-      <View style={s.arWrap} pointerEvents="box-none">
+      <View style={[s.arWrap, { bottom: 38 + safe.navBar }]} pointerEvents="box-none">
         <Pressable onPress={onEnterAr} disabled={!canAr} style={[s.arRing, !canAr && { opacity: 0.4 }]}>
           <LinearGradient colors={[C.cyanLight, C.cyanDeep]} style={s.arBtn}>
             <Svg width={27} height={27} viewBox="0 0 24 24" fill="none"
@@ -400,7 +535,7 @@ export default function MapScreen({ game, snap, onEnterAr }: Props) {
 
       {/* OSM 데이터 출처 표기 — ODbL 라이선스상 의무. 지우지 말 것 */}
       {game.usingOsm && (
-        <View pointerEvents="none" style={s.attrib}>
+        <View pointerEvents="none" style={[s.attrib, { bottom: 8 + safe.navBar }]}>
           <Text style={s.attribTxt}>© OpenStreetMap contributors</Text>
         </View>
       )}

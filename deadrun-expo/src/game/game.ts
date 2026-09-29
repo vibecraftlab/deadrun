@@ -4,18 +4,33 @@ import { ZombieSimulation, Zombie } from '../core/zombies';
 import { LocationFilter, FilteredPose } from '../core/locationFilter';
 import { Rules } from '../core/rules';
 import { Config } from '../config';
-import { generateSyntheticMap } from '../core/syntheticMap';
 import { fetchRoads, fetchBuildings } from '../services/overpass';
 import { loadMapPack } from '../services/mapPack';
 import { LocationSource, GpsSource } from '../services/locationSource';
+import { ZoneIndex } from '../core/safeZones';
+import { RunRecord, Split } from '../core/runStats';
 
 export type GameState = 'idle' | 'loading' | 'playing' | 'dead';
 export type ThreatLevel = 'none' | 'alert' | 'chased' | 'imminent';
+/** 지금 서 있는 곳 — 길 위 / 안전 구역(녹색 건물) / 그 밖의 건물 */
+export type ZoneKind = 'none' | 'safe' | 'unsafe';
+
+/** 구역 상태 (화면 표시용) */
+export interface ZoneView {
+  kind: ZoneKind;
+  /** 이 구역에 들어와 있은 시간(초) */
+  sec: number;
+  /** 좀비 공격이 막히는 중인가 */
+  shielded: boolean;
+  /** 보호가 풀리기까지 남은 시간(초). 무제한이면 -1, 이미 풀렸으면 0 */
+  shieldLeftSec: number;
+  /** 들어와 있는 건물 이름 (OSM에 있으면) */
+  name?: string;
+}
 
 export interface GameConfig {
   center: LatLon;          // 지도 중심 (GPS 모드에선 현재 위치로 대체)
   radiusMeters: number;
-  useOverpass: boolean;
   zombiesPerSqKm: number;
   maxZombies: number;
   playerName: string;      // 감지 알림에 표시되는 사용자 이름
@@ -29,8 +44,14 @@ export interface GameConfig {
   constrainToRoad: boolean;                // 도로 밖 이동 제한 (.env)
   godMode: boolean;              // 무적 모드 (.env)
   attackRangeM: number;          // 좀비 공격 사거리 (.env)
+  zombieMinSepM: number;         // 플레이어와 겹치지 않게 둘 최소 간격 (.env)
+  safeZoneRatio: number;         // 안전 구역 비율 0~1 (.env)
+  safeZoneMaxSec: number;        // 안전 구역 보호 지속 상한 초, 0=무제한 (.env)
+  unsafeBreachSec: number;       // 비안전 건물에서 좀비가 들어오기까지 초 (.env)
+  zoneGraceSec: number;          // 구역 진입·이탈 유예 초 (.env)
   maxChasers: number;            // 동시 추격 상한 (.env)
   relentlessChase: boolean;      // 감지 후 포기하지 않음 (.env)
+  deAggroHoldSec: number;        // 인지 범위 밖에서 이만큼 버티면 추격 해제 (.env)
   detectRangeMult: number;       // 감지 범위 배수 (.env)
   detectRangeMaxM: number;       // 감지 반경 상한 m (.env)
   useFov: boolean;               // 시야각 기반 감지 (.env)
@@ -83,6 +104,8 @@ export interface Snapshot {
   killsByType: Record<string, number>;
   /** 거리 적립으로 받은 보급 횟수 */
   supplies: number;
+  /** 좀비에게 쫓긴 시간(초) — 고강도 구간 */
+  chaseSec: number;
   distanceM: number;
   sessionSec: number;
   alive: number;
@@ -101,6 +124,8 @@ export interface Snapshot {
   /** 화면 표시용 보간 위치 (지도 카메라·플레이어 마커) */
   renderPos: Vec2;
   buildingsVersion: number;  // 건물 로드 완료 시 증가
+  /** 안전 구역 상태 */
+  zone: ZoneView;
 }
 
 /** 게임 오케스트레이션 (React 비의존 뮤터블 코어). Unity의 GameBootstrap 대응 */
@@ -133,8 +158,37 @@ export class Game {
   private renderPos: Vec2 = { x: 0, y: 0 };
   /** 건물 외곽선 (표시 전용). 게임 시작 뒤 백그라운드로 채워진다 */
   buildings: Vec2[][] = [];
+  /**
+   * 건물 이름 — buildings 와 같은 순서. 이름이 없으면 undefined.
+   * 지도에서 내 주변 몇 개만 라벨로 띄운다 (전부 뿌리면 글자 범벅이 된다).
+   */
+  buildingNames: (string | undefined)[] = [];
   /** 건물이 새로 들어왔을 때만 올라간다 — 지도 레이어 재렌더 트리거 */
   buildingsVersion = 0;
+
+  /*
+    안전 구역 — 건물이 처음으로 게임 로직이 된 자리다 (core/safeZones.ts).
+
+     · 안전 구역(녹색)      : 좀비가 못 들어온다. safeZoneMaxSec 까지 보호.
+     · 그 밖의 건물         : unsafeBuildingBreachSec(기본 3분) 뒤 좀비가 밀고 들어온다.
+     · 길 위                : 보호 없음.
+
+    판정 좌표는 pose.posSnapped 가 **아니라** pose.posFiltered 다.
+    스냅은 GPS를 도로로 12m까지 끌어당기므로(locationFilter SNAP_MAX), 그걸 쓰면
+    도로변 건물 안에 서 있어도 좌표가 길 위로 나와 "들어왔다"가 판정되지 않는다.
+  */
+  /** 건물 구역 색인 — 건물이 로드된 뒤에 만들어진다 */
+  zoneIndex: ZoneIndex | null = null;
+  /** 색인이 새로 만들어질 때 올라간다 — 지도 건물 레이어 재렌더 트리거 */
+  zoneVersion = 0;
+  private zoneOrigin: LatLon | null = null;
+  private zoneKind: ZoneKind = 'none';
+  private zoneIdx = -1;
+  private zoneSec = 0;
+  /** 유예 중인 후보 구역 (히스테리시스) */
+  private zoneCandIdx = -2;
+  private zoneCandSec = 0;
+  private zoneShielded = false;
   /** OSM 실데이터를 쓰는 중인지 — 저작자 표시(ODbL) 노출 조건 */
   usingOsm = false;
   private renderInit = false;
@@ -152,6 +206,28 @@ export class Game {
   private supplyAcc = 0;
   private supplies = 0;
   private sessionSec = 0;
+
+  /*
+    런 기록 누적기 — 기록 화면(design/v2 Stats·RunDetail·Chase)의 원천이다.
+    쫓기는 동안을 따로 재는 것이 핵심이다. 그 구간이 곧 고강도 인터벌이고,
+    이 앱만 줄 수 있는 숫자다 (note-records).
+  */
+  /** 런이 시작된 시각 */
+  private startedAt = new Date().toISOString();
+  /** 쫓긴 시간(초)과 그동안 달린 거리(m) */
+  private chaseSec = 0;
+  private chaseDistanceM = 0;
+  /** 추격당한 횟수 — 끊겼다 다시 붙으면 따로 센다 */
+  private chaseCount = 0;
+  /** 지금 이어지고 있는 추격의 길이(초) */
+  private curChaseSec = 0;
+  private longestChaseSec = 0;
+  /** 1km 구간 기록 */
+  private splits: Split[] = [];
+  /** 이번 킬로미터에 쌓인 거리·시간 */
+  private splitM = 0;
+  private splitSec = 0;
+  private splitChasedSec = 0;
   private hp: number = Rules.playerMaxHp;
   private godMode = false;
   private scanCooldown = 0;
@@ -171,6 +247,86 @@ export class Game {
   private lastThreat: ThreatLevel = 'none';
   private playerName = '러너';
 
+  /** 안전 구역 설정 — .env에서 받아 init이 채운다 */
+  private safeZoneRatio = 0;
+  private safeZoneMaxSec = 0;
+  private unsafeBreachSec = 0;
+  private zoneGraceSec = 0;
+
+  /** 건물이 들어온(또는 바뀐) 뒤 구역 색인을 다시 만든다 */
+  private rebuildZoneIndex() {
+    if (!this.zoneOrigin || this.buildings.length === 0) return;
+    this.zoneIndex = new ZoneIndex(this.buildings, this.zoneOrigin, this.safeZoneRatio);
+    this.zoneVersion++;
+  }
+
+  /**
+   * 지금 서 있는 구역을 판정하고 보호 상태를 갱신한다.
+   *
+   * 경계에서 GPS가 흔들리면 보호가 깜빡이므로, 다른 구역이 zoneGraceSec 동안
+   * 연속으로 잡혀야 실제로 갈아탄다. 같은 구역에 머무는 동안에는 체류 시간이 쌓인다.
+   */
+  private updateZone(dt: number) {
+    if (!this.zoneIndex) {
+      this.zoneKind = 'none';
+      this.zoneIdx = -1;
+      this.zoneShielded = false;
+      return;
+    }
+    // 스냅 전 좌표라야 건물 안에 있다는 사실이 남는다 (위 주석 참고)
+    const at = this.zoneIndex.buildingAt(this.pose.posFiltered);
+
+    if (at === this.zoneIdx) {
+      this.zoneCandIdx = -2;
+      this.zoneCandSec = 0;
+      this.zoneSec += dt;
+    } else {
+      if (at === this.zoneCandIdx) this.zoneCandSec += dt;
+      else { this.zoneCandIdx = at; this.zoneCandSec = 0; }
+
+      if (this.zoneCandSec >= this.zoneGraceSec) {
+        this.zoneIdx = at;
+        this.zoneKind = at < 0 ? 'none' : (this.zoneIndex.safe[at] ? 'safe' : 'unsafe');
+        this.zoneSec = this.zoneCandSec;  // 유예 동안 서 있던 시간도 체류로 친다
+        this.zoneCandIdx = -2;
+        this.zoneCandSec = 0;
+      } else {
+        this.zoneSec += dt; // 아직 갈아타지 않았으므로 현재 구역이 계속된다
+      }
+    }
+
+    const limit = this.zoneShieldLimitSec();
+    this.zoneShielded = this.zoneKind !== 'none' && (limit <= 0 || this.zoneSec < limit);
+
+    if (this.sim) {
+      this.sim.playerShielded = this.zoneShielded;
+      // 보호가 풀린 건물 안 — 좀비가 도로를 벗어나 밀고 들어온다.
+      // 길 위에서는 절대 켜지 않는다(길에서 건물을 통과해 달려오면 안 된다).
+      this.sim.allowBreach = this.zoneKind !== 'none' && !this.zoneShielded;
+    }
+  }
+
+  /** 현재 구역의 보호 지속 한도(초). 0이면 무제한 */
+  private zoneShieldLimitSec(): number {
+    if (this.zoneKind === 'safe') return this.safeZoneMaxSec;
+    if (this.zoneKind === 'unsafe') return this.unsafeBreachSec;
+    return 0;
+  }
+
+  /** 화면 표시용 구역 상태 */
+  private zoneView(): ZoneView {
+    const limit = this.zoneShieldLimitSec();
+    return {
+      kind: this.zoneKind,
+      sec: this.zoneKind === 'none' ? 0 : this.zoneSec,
+      shielded: this.zoneShielded,
+      shieldLeftSec: this.zoneKind === 'none' ? 0
+        : limit <= 0 ? -1
+          : Math.max(0, limit - this.zoneSec),
+      name: this.zoneIdx >= 0 ? this.buildingNames[this.zoneIdx] : undefined,
+    };
+  }
+
   /** 로딩 체크리스트 한 줄을 갱신한다 */
   private step(key: string, state: LoadStep['state'], detail = '') {
     const s = this.loadSteps.find(x => x.key === key);
@@ -182,6 +338,16 @@ export class Game {
   }
 
   async init(cfg: GameConfig): Promise<void> {
+    this.startedAt = new Date().toISOString();
+    this.safeZoneRatio = Math.max(0, Math.min(1, cfg.safeZoneRatio));
+    this.safeZoneMaxSec = Math.max(0, cfg.safeZoneMaxSec);
+    this.unsafeBreachSec = Math.max(0, cfg.unsafeBreachSec);
+    this.zoneGraceSec = Math.max(0, cfg.zoneGraceSec);
+    this.zoneKind = 'none';
+    this.zoneIdx = -1;
+    this.zoneSec = 0;
+    this.zoneShielded = false;
+    this.zoneIndex = null;
     this.state = 'loading';
     this.loadStatus = '위치 소스 준비 중...';
     this.loadSteps = [
@@ -196,6 +362,8 @@ export class Game {
     // 위치는 언제나 실기기 GPS에서 받는다 (가상 이동 소스는 폐기)
     this.source = new GpsSource();
     const origin = cfg.center;
+    // 건물 ENU 좌표를 위경도로 되돌려 해시하는 기준점 (안전 구역이 런마다 바뀌지 않게)
+    this.zoneOrigin = origin;
     await this.source.start(origin); // 권한 요청 포함
     this.loadStatus = 'GPS 첫 신호 대기 중...';
     if (!await this.waitFirstFix(20000))
@@ -218,7 +386,9 @@ export class Game {
         if (loaded) {
           ways = loaded.ways;
           this.buildings = loaded.buildings;
+          this.buildingNames = loaded.buildingNames;
           this.buildingsVersion++;
+          this.rebuildZoneIndex();
           this.usingOsm = true;
           this.mapSource = loaded.source;
           this.step('map', 'done', loaded.source);
@@ -229,7 +399,8 @@ export class Game {
     }
 
     // ② 팩이 없고 Overpass가 켜져 있을 때만 실시간 조회
-    if (!ways && cfg.useOverpass && Config.useOverpassApi) {
+    let roadError: unknown = null;
+    if (!ways && Config.useOverpassApi) {
       this.loadStatus = 'OSM 서버에서 도로 받는 중... (느릴 수 있음)';
       try {
         ways = await fetchRoads(origin, cfg.radiusMeters);
@@ -237,13 +408,26 @@ export class Game {
         this.usingOsm = true;
         this.step('map', 'done', `Overpass · ${ways.length} ways`);
       } catch (e) {
-        console.warn('[DEADRUN] Overpass 실패 → 합성 폴백:', e);
+        roadError = e;
+        console.warn('[DEADRUN] Overpass 실패:', e);
       }
     }
-    if (!ways) { this.loadStatus = '지도를 못 받아 합성 도시를 만듭니다...'; this.step('map', 'done', '합성 격자 도시'); }
-    if (!ways) {
-      ways = generateSyntheticMap(Math.min(cfg.radiusMeters, 600));
-      this.mapSource = '합성 격자 도시 (오프라인 폴백)';
+
+    /*
+      실제 도로를 못 받으면 여기서 끝난다.
+      예전에는 합성 격자 도시로 폴백했으나 2026-09-16에 걷어냈다 — 가짜 지형에서
+      달리는 것은 이 앱이 하려는 일(실외 러닝)이 아니고, 폴백이 조용히 끼어들면
+      "왜 내 동네가 아니지"를 디버깅하기 어려웠다. 이제 실패는 실패로 드러낸다.
+    */
+    if (!ways || ways.length === 0) {
+      this.step('map', 'done', '실패');
+      throw new Error(
+        Config.useOverpassApi
+          ? '지도를 받지 못했습니다. 네트워크를 확인하고 다시 시도하세요.'
+            + (roadError ? `\n(${String((roadError as Error)?.message ?? roadError)})` : '')
+          : '지도 파일을 받지 못했고 OSM 실시간 조회가 꺼져 있습니다. '
+            + 'EXPO_PUBLIC_MAP_PACK_URL 을 확인하세요.',
+      );
     }
 
     // 건물은 도로보다 배로 무겁다(실측 804KB·9.9초). 로딩을 막지 않고 뒤에서 받는다.
@@ -272,8 +456,18 @@ export class Game {
     this.sim.constrainToRoad = cfg.constrainToRoad;
     this.godMode = cfg.godMode;
     this.sim.attackRange = Math.max(0.2, cfg.attackRangeM || Rules.attackRange);
+    /*
+      겹침 방지 간격은 반드시 공격 사거리보다 **작아야** 한다.
+      크거나 같으면 좀비가 영원히 사거리 안으로 못 들어와 한 대도 때리지 못한다
+      (.env 로 둘 다 조절할 수 있으므로 조합을 코드에서 막는다).
+    */
+    this.sim.minPlayerSepM = Math.min(
+      Math.max(0, cfg.zombieMinSepM),
+      this.sim.attackRange * 0.8,
+    );
     this.sim.maxChasers = Math.max(1, cfg.maxChasers || Rules.maxChasers);
     this.sim.relentless = cfg.relentlessChase;
+    this.sim.deAggroHoldSec = Math.max(0, cfg.deAggroHoldSec);
     this.sim.detectRangeMult = Math.max(0.1, cfg.detectRangeMult || 1);
     this.sim.detectRangeMaxM = Math.max(5, cfg.detectRangeMaxM || 999);
     this.sim.useFov = cfg.useFov;
@@ -337,11 +531,38 @@ export class Game {
         this.pose = this.filter.predict(dt);
       }
 
+      // 쫓기는 중인가 — 이 구간이 고강도 인터벌로 기록된다
+      const chasedNow = (this.sim?.countChasing() ?? 0) > 0;
+      if (chasedNow) {
+        if (this.curChaseSec === 0) this.chaseCount++;  // 새로 붙었다
+        this.curChaseSec += dt;
+        this.chaseSec += dt;
+        this.splitChasedSec += dt;
+        this.longestChaseSec = Math.max(this.longestChaseSec, this.curChaseSec);
+      } else {
+        this.curChaseSec = 0;
+      }
+      this.splitSec += dt;
+
       // 거리 적립 → 보급 (GDD §5.3)
       if (this.pose.speedKmh > 1 && this.pose.speedKmh < Rules.vehicleSpeedKmh) {
         const step = dist(prev, this.pose.posFiltered);
         if (step < 30) {
           this.distanceM += step;
+          if (chasedNow) this.chaseDistanceM += step;
+
+          // 1km를 채울 때마다 구간 하나를 닫는다
+          this.splitM += step;
+          while (this.splitM >= 1000) {
+            this.splitM -= 1000;
+            this.splits.push({
+              km: this.splits.length + 1,
+              sec: Math.round(this.splitSec),
+              chasedSec: Math.round(this.splitChasedSec),
+            });
+            this.splitSec = 0;
+            this.splitChasedSec = 0;
+          }
           this.supplyAcc += step;
           if (this.supplyAcc >= Rules.supplyIntervalMeters) {
             this.supplyAcc -= Rules.supplyIntervalMeters;
@@ -352,6 +573,8 @@ export class Game {
         }
       }
 
+      // 구역 판정을 시뮬보다 **먼저** — 이번 틱의 공격이 보호 상태를 반영해야 한다
+      this.updateZone(dt);
       this.sim?.tick(dt, this.pose.posSnapped, this.pose.layer);
       this.gunCd -= dt;
       this.scanCooldown -= dt;
@@ -375,8 +598,12 @@ export class Game {
     fetchBuildings(origin, radius)
       .then(list => {
         this.buildings = list;
+        // 실시간 Overpass 경로에는 이름이 없다 (구운 타일에만 들어 있다)
+        this.buildingNames = list.map(() => undefined);
         this.buildingsVersion++;
-        console.log(`[DEADRUN] 건물 ${list.length}개 로드`);
+        this.rebuildZoneIndex();
+        console.log(`[DEADRUN] 건물 ${list.length}개 로드`
+          + ` · 안전 구역 ${this.zoneIndex?.safeCount ?? 0}개`);
         this.mapSource += ` · 건물 ${list.length.toLocaleString()}`;
       })
       .catch(e => console.warn('[DEADRUN] 건물 로드 실패(무시):', e));
@@ -384,10 +611,30 @@ export class Game {
 
   renderStep(dt: number) {
     if (this.state !== 'playing' && this.state !== 'dead') return;
-    // 표시는 스냅 이전의 필터 위치를 따라간다.
-    // 스냅된 값을 그리면 도로가 바뀔 때마다 화면이 순간이동한다(계측: 한 번에 30m).
-    // 스냅은 레이어 판정과 좀비 타게팅에만 쓴다.
-    const target = this.pose.posFiltered;
+    /*
+      표시 위치도 도로에 붙인다 (scripts/snapjump.ts 로 계측하고 바꿨다).
+
+       예전에는 필터 위치를 그대로 그렸다. 스냅된 값을 그리면 도로가 바뀔 때마다
+       화면이 한 번에 30m씩 순간이동했기 때문이다. 그 뒤 맵매칭에 들러붙기
+       (SNAP_STICKY = 12m, 다른 도로가 그만큼 더 가까워야 갈아탄다)가 들어와서
+       다시 쟀더니 상황이 달라져 있었다.
+
+        · 목표값 도약 최대 30m → 13m. 게다가 그 도약은 도로를 갈아타서가 아니라
+          스냅이 붙었다 떨어지는 순간이다(12m = SNAP_MAX). 5,100프레임 중 19번, 0.4%.
+        · 아래 지수 보간이 그 도약을 흡수해 화면 이동은 프레임당 최대 1.2m 다
+          (기존 0.4m). 지도 축척에서 2~3px이라 순간이동으로 보이지 않는다.
+        · 대신 실제 위치와의 오차가 중앙값 4.5m → 3.1m 로 줄었다.
+
+       도심에서는 GPS 오차가 10~20m라 필터 위치만으로는 건물 안에 찍힌다(보행로에서
+       건물까지 중앙값 19m). 도로에 붙이면 길 위에 남는다.
+
+       ※ 12m 안에 도로가 없으면 붙이지 않는다 — 그때는 필터 위치를 그대로 쓴다.
+         멀리 끌어당겨야 하는 상황은 어느 도로인지 확신할 수 없는 상황이라,
+         SNAP_MAX 자체가 안전장치 역할을 한다.
+       ※ 좀비 감지·조준 판정은 예전부터 posSnapped 를 썼다. 이 변경으로
+         화면에 보이는 위치와 판정 위치가 같아진다.
+    */
+    const target = this.pose.snapped ? this.pose.posSnapped : this.pose.posFiltered;
     if (!this.renderInit || dist(this.renderPos, target) > 50) {
       this.renderPos = target;
       this.renderInit = true;
@@ -507,6 +754,27 @@ export class Game {
     if (!this.godMode && this.hp <= 0) this.die(`${z.type.name}의 공격으로 사망`);
   }
 
+  /**
+   * 이번 런의 기록. 사망(또는 종료) 후 한 번 읽어 저장한다.
+   * 1km를 못 채운 마지막 토막은 버린다 — 구간 기록은 1km 단위라야 비교가 된다.
+   */
+  runRecord(): RunRecord {
+    return {
+      startedAt: this.startedAt,
+      distanceM: this.distanceM,
+      durationSec: this.sessionSec,
+      chaseSec: this.chaseSec,
+      chaseDistanceM: this.chaseDistanceM,
+      chaseCount: this.chaseCount,
+      longestChaseSec: this.longestChaseSec,
+      kills: this.kills,
+      killsByType: { ...this.killsByType },
+      supplies: this.supplies,
+      deathCause: this.deathCause,
+      splits: [...this.splits],
+    };
+  }
+
   private die(cause: string) {
     this.deathCause = cause;
     this.state = 'dead';
@@ -564,6 +832,7 @@ export class Game {
       kills: this.kills,
       killsByType: this.killsByType,
       supplies: this.supplies,
+      chaseSec: this.chaseSec,
       distanceM: this.distanceM,
       sessionSec: this.sessionSec,
       alive: this.sim?.countAlive() ?? 0,
@@ -580,6 +849,7 @@ export class Game {
       zombies,
       rawEnu: this.source?.latest?.enu ?? null,
       renderPos: this.renderInit ? this.renderPos : this.pose.posSnapped,
+      zone: this.zoneView(),
     };
   }
 }

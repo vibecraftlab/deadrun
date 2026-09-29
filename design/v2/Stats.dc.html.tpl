@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+<!--CSS-->
+  </style>
+</helmet>
+
+<div style="width:390px;height:844px;background:#070A14;overflow:hidden;position:relative;display:flex;flex-direction:column">
+  <div style="padding:62px 22px 0;flex-shrink:0">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between">
+      <div>
+        <div class="eyebrow">9월 2주차</div>
+        <div style="color:#fff;font-size:27px;font-weight:800;letter-spacing:-0.8px;margin-top:6px">내 기록</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;background:rgba(255,46,91,0.12);border:1px solid rgba(255,46,91,0.34);
+        border-radius:16px;padding:7px 13px">
+        <div style="color:#FF7D9B;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums">7</div>
+        <div style="color:rgba(255,255,255,0.5);font-size:10.5px;font-weight:700;line-height:12px">주 연속<br>달성</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:16px 22px 0;flex-grow:1;overflow:hidden">
+
+    <div class="glass" style="border-radius:22px;padding:17px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div class="eyebrow">이번 주 거리</div>
+        <div style="color:rgba(255,255,255,0.42);font-size:10.5px;font-weight:700">목표 20km</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:7px;margin-top:6px">
+        <div style="color:#fff;font-size:36px;font-weight:800;letter-spacing:-1.2px;font-variant-numeric:tabular-nums">15.33</div>
+        <div style="color:rgba(255,255,255,0.45);font-size:13px;font-weight:600;margin-bottom:7px">km</div>
+        <div style="margin-left:auto;margin-bottom:8px;color:#7CFF5B;font-size:11.5px;font-weight:800">지난주 +2.1</div>
+      </div>
+      <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.08);margin-top:9px;overflow:hidden">
+        <div style="width:77%;height:5px;border-radius:3px;background:#1795C2"></div>
+      </div>
+      <div style="margin-top:14px"><svg width="326" height="118" viewBox="0 0 326 118">
+    <line x1="0" y1="96" x2="326" y2="96" stroke="rgba(255,255,255,0.07)"/>
+    <rect x="0.0" y="28.8" width="26" height="67.2" rx="4" fill="#1795C2"/><text x="13.0" y="21.8" text-anchor="middle" fill="rgba(255,255,255,0.82)"
+          font-size="9.5" font-weight="800" font-family="Outfit, sans-serif">4.2</text><rect x="50.0" y="92" width="26" height="4" rx="2" fill="rgba(255,255,255,0.08)"/><rect x="100.0" y="14.4" width="26" height="81.6" rx="4" fill="#1795C2"/><text x="113.0" y="7.4" text-anchor="middle" fill="rgba(255,255,255,0.82)"
+          font-size="9.5" font-weight="800" font-family="Outfit, sans-serif">5.1</text><rect x="150.0" y="92" width="26" height="4" rx="2" fill="rgba(255,255,255,0.08)"/><rect x="200.0" y="41.6" width="26" height="54.4" rx="4" fill="#1795C2"/><text x="213.0" y="34.6" text-anchor="middle" fill="rgba(255,255,255,0.82)"
+          font-size="9.5" font-weight="800" font-family="Outfit, sans-serif">3.4</text><rect x="250.0" y="53.9" width="26" height="42.1" rx="4" fill="#1795C2"/><text x="263.0" y="46.9" text-anchor="middle" fill="rgba(255,255,255,0.82)"
+          font-size="9.5" font-weight="800" font-family="Outfit, sans-serif">2.63</text><rect x="300.0" y="92" width="26" height="4" rx="2" fill="rgba(255,255,255,0.08)"/><text x="13.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">월</text><text x="63.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">화</text><text x="113.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">수</text><text x="163.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">목</text><text x="213.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">금</text><text x="263.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">토</text><text x="313.0" y="111" text-anchor="middle" fill="rgba(255,255,255,0.42)"
+       font-size="10" font-weight="700" font-family="Outfit, sans-serif">일</text></svg></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:11px">
+      <div class="glass" style="flex-grow:1;flex-basis:0;border-radius:18px;padding:14px">
+        <div class="eyebrow" style="color:#FF7D9B">고강도 시간</div>
+        <div style="color:#fff;font-size:24px;font-weight:800;margin-top:5px;font-variant-numeric:tabular-nums">23:40</div>
+        <div style="color:rgba(255,255,255,0.42);font-size:10.5px;font-weight:600;margin-top:3px">좀비에게 쫓긴 시간</div>
+      </div>
+      <div class="glass" style="flex-grow:1;flex-basis:0;border-radius:18px;padding:14px">
+        <div class="eyebrow">총 시간</div>
+        <div style="color:#fff;font-size:24px;font-weight:800;margin-top:5px;font-variant-numeric:tabular-nums">1:34</div>
+        <div style="color:rgba(255,255,255,0.42);font-size:10.5px;font-weight:600;margin-top:3px">주간 누적</div>
+      </div>
+    </div>
+
+    <div class="glass" style="border-radius:20px;padding:15px 16px;margin-top:11px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div class="eyebrow">최근 8주</div>
+        <div style="color:rgba(255,255,255,0.42);font-size:10px;font-weight:700">하루 거리</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:11px">
+        <svg width="132" height="115" viewBox="0 0 132 115"><rect x="0" y="0" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="0" y="17" width="13" height="13" rx="3" fill="#10394A"/><rect x="0" y="34" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="0" y="51" width="13" height="13" rx="3" fill="#155A76"/><rect x="0" y="68" width="13" height="13" rx="3" fill="#10394A"/><rect x="0" y="85" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="0" y="102" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="17" y="0" width="13" height="13" rx="3" fill="#10394A"/><rect x="17" y="17" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="17" y="34" width="13" height="13" rx="3" fill="#155A76"/><rect x="17" y="51" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="17" y="68" width="13" height="13" rx="3" fill="#10394A"/><rect x="17" y="85" width="13" height="13" rx="3" fill="#2FA9D6"/><rect x="17" y="102" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="34" y="0" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="34" y="17" width="13" height="13" rx="3" fill="#155A76"/><rect x="34" y="34" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="34" y="51" width="13" height="13" rx="3" fill="#10394A"/><rect x="34" y="68" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="34" y="85" width="13" height="13" rx="3" fill="#155A76"/><rect x="34" y="102" width="13" height="13" rx="3" fill="#10394A"/><rect x="51" y="0" width="13" height="13" rx="3" fill="#155A76"/><rect x="51" y="17" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="51" y="34" width="13" height="13" rx="3" fill="#10394A"/><rect x="51" y="51" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="51" y="68" width="13" height="13" rx="3" fill="#2FA9D6"/><rect x="51" y="85" width="13" height="13" rx="3" fill="#10394A"/><rect x="51" y="102" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="68" y="0" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="68" y="17" width="13" height="13" rx="3" fill="#10394A"/><rect x="68" y="34" width="13" height="13" rx="3" fill="#155A76"/><rect x="68" y="51" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="68" y="68" width="13" height="13" rx="3" fill="#10394A"/><rect x="68" y="85" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="68" y="102" width="13" height="13" rx="3" fill="#155A76"/><rect x="85" y="0" width="13" height="13" rx="3" fill="#10394A"/><rect x="85" y="17" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="85" y="34" width="13" height="13" rx="3" fill="#2FA9D6"/><rect x="85" y="51" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="85" y="68" width="13" height="13" rx="3" fill="#155A76"/><rect x="85" y="85" width="13" height="13" rx="3" fill="#10394A"/><rect x="85" y="102" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="102" y="0" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="102" y="17" width="13" height="13" rx="3" fill="#155A76"/><rect x="102" y="34" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="102" y="51" width="13" height="13" rx="3" fill="#10394A"/><rect x="102" y="68" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="102" y="85" width="13" height="13" rx="3" fill="#2FA9D6"/><rect x="102" y="102" width="13" height="13" rx="3" fill="#10394A"/><rect x="119" y="0" width="13" height="13" rx="3" fill="#155A76"/><rect x="119" y="17" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="119" y="34" width="13" height="13" rx="3" fill="#2FA9D6"/><rect x="119" y="51" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/><rect x="119" y="68" width="13" height="13" rx="3" fill="#155A76"/><rect x="119" y="85" width="13" height="13" rx="3" fill="#155A76"/><rect x="119" y="102" width="13" height="13" rx="3" fill="rgba(255,255,255,0.05)"/></svg>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:3px;background:rgba(255,255,255,0.05)"></div>
+            <span style="color:rgba(255,255,255,0.42);font-size:9.5px;font-weight:700">쉼</span></div><div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:3px;background:#10394A"></div>
+            <span style="color:rgba(255,255,255,0.42);font-size:9.5px;font-weight:700">~3km</span></div><div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:3px;background:#155A76"></div>
+            <span style="color:rgba(255,255,255,0.42);font-size:9.5px;font-weight:700">~6km</span></div><div style="display:flex;align-items:center;gap:6px">
+            <div style="width:10px;height:10px;border-radius:3px;background:#2FA9D6"></div>
+            <span style="color:rgba(255,255,255,0.42);font-size:9.5px;font-weight:700">6km+</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:16px">
+      <div class="eyebrow">최근 런</div>
+      <div style="color:#1795C2;font-size:11px;font-weight:800">전체 보기</div>
+    </div>
+    <div class="glass" style="border-radius:18px;padding:13px 15px;margin-top:9px;display:flex;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;border-radius:12px;background:rgba(23,149,194,0.16);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="color:#1795C2;font-size:13px;font-weight:800">토</span>
+      </div>
+      <div style="flex-grow:1">
+        <div style="color:#fff;font-size:13.5px;font-weight:800">2.63km · 14:22</div>
+        <div style="color:rgba(255,255,255,0.42);font-size:11px;font-weight:600;margin-top:2px">추격 3회 · 처치 9 · 사망</div>
+      </div>
+      <div style="color:rgba(255,255,255,0.42);font-size:16px">&rsaquo;</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

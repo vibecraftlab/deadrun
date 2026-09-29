@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, TextInput, ScrollView, useWindowDimensions,
 } from 'react-native';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
-import { A, C, F, PAD, R, T } from '../ui/theme';
+import { A, C, F, PAD, R, T, useSafePad } from '../ui/theme';
 import { Bar, Cta, Eyebrow, GhostButton, Glass } from '../ui/components';
 import { Config } from '../config';
 import { loadProfile, Profile } from '../services/profile';
+import { loadRuns, totalDistanceM, weekStreak, weeks } from '../services/runRecords';
 
 /**
  * 홈 화면 (design/v2 Home).
@@ -20,8 +21,6 @@ export interface HomeOptions {
   playerName: string;
   /** 좀비 밀도 단계 */
   density: 'low' | 'normal' | 'high';
-  /** OSM 실제 도로 사용 (끄면 합성 격자 도시) */
-  realRoads: boolean;
   /** 테스트 스폰 — 주변에 몇 마리만 */
   testMode: boolean;
 }
@@ -31,14 +30,16 @@ export const densityToPerSqKm = (d: HomeOptions['density']) =>
   Math.round(Config.zombiesPerSqKm * DENSITY_MULT[d]);
 
 export default function HomeScreen({
-  options, onChange, onStart, error,
+  options, onChange, onStart, onOpenStats, error,
 }: {
   options: HomeOptions;
   onChange: (o: HomeOptions) => void;
   onStart: () => void;
+  onOpenStats: () => void;
   error?: string | null;
 }) {
   const { width } = useWindowDimensions();
+  const safe = useSafePad();
   const [profile, setProfile] = useState<Profile>(() => loadProfile());
   const [place, setPlace] = useState<string>('');
 
@@ -59,8 +60,20 @@ export default function HomeScreen({
     setProfile(loadProfile());
   }, []);
 
-  const goalPct = profile.goalKm > 0
-    ? Math.min(100, (profile.todayKm / profile.goalKm) * 100) : 0;
+  /*
+    기본 단위는 하루가 아니라 주다 (design/v2 Training §1).
+    하루 목표는 못 지킨 날마다 실패를 만들지만, 주 목표는 남은 날로 만회할 수 있다.
+  */
+  const runs = useMemo(() => loadRuns(), []);
+  const week = useMemo(() => weeks(runs, 1)[0], [runs]);
+  const streak = useMemo(
+    () => weekStreak(runs, profile.weeklyGoalKm), [runs, profile.weeklyGoalKm]);
+  const weekKm = week.distanceM / 1000;
+  const goalPct = profile.weeklyGoalKm > 0
+    ? Math.min(100, (weekKm / profile.weeklyGoalKm) * 100) : 0;
+  const leftKm = Math.max(0, profile.weeklyGoalKm - weekKm);
+  /** WHO 권고는 주 75분 고강도다 */
+  const intensityPct = Math.round((week.chaseSec / (75 * 60)) * 100);
   const set = (patch: Partial<HomeOptions>) => onChange({ ...options, ...patch });
 
   return (
@@ -88,24 +101,26 @@ export default function HomeScreen({
           <Glass style={s.totalCard} radius={R.md}>
             <Eyebrow>누적</Eyebrow>
             <Text style={s.totalNum}>
-              {profile.totalKm.toFixed(1)}<Text style={s.totalUnit}>km</Text>
+              {(totalDistanceM(runs) / 1000).toFixed(1)}<Text style={s.totalUnit}>km</Text>
             </Text>
           </Glass>
         </View>
 
-        {/* 오늘 목표 */}
+        {/* 이번 주 목표 — 연속 기록도 주 단위로만 끊는다 */}
         <Glass style={s.goalCard}>
-          <Eyebrow>오늘 목표</Eyebrow>
+          <Eyebrow>{streak > 0 ? `이번 주 · ${streak}주 연속 달성 중` : '이번 주'}</Eyebrow>
           <View style={s.goalRow}>
-            <Text style={s.goalNum}>{profile.goalKm.toFixed(1)}</Text>
-            <Text style={s.goalUnit}>km 완주</Text>
+            <Text style={s.goalNum}>{weekKm.toFixed(2)}</Text>
+            <Text style={s.goalUnit}>/ {profile.weeklyGoalKm}km</Text>
+            {leftKm > 0
+              ? <Text style={s.goalLeft}>{leftKm.toFixed(2)}km 남음</Text>
+              : <Text style={[s.goalLeft, { color: C.cyan }]}>목표 달성</Text>}
           </View>
           <Bar pct={goalPct} />
           <Text style={[T.cardBody, { marginTop: 8 }]}>
-            {profile.todayKm > 0
-              ? `${profile.todayKm.toFixed(2)}km 달림 · ${Math.round(goalPct)}%`
-              : '아직 오늘 기록이 없습니다'}
-            {profile.runs > 0 && ` · 지금까지 ${profile.runs}회`}
+            {week.chaseSec > 0
+              ? `고강도 ${Math.floor(week.chaseSec / 60)}분 ${Math.floor(week.chaseSec % 60)}초 · 주 권고 75분의 ${intensityPct}%`
+              : '쫓기는 구간이 곧 고강도 인터벌이다 — 아직 이번 주 기록이 없다'}
           </Text>
         </Glass>
 
@@ -123,17 +138,6 @@ export default function HomeScreen({
             placeholderTextColor={A.t34}
             maxLength={12}
           />
-        </Glass>
-
-        {/* 실제 도로 */}
-        <Glass style={s.rowCard} radius={R.lg}>
-          <View style={{ flex: 1 }}>
-            <Text style={T.cardTitle}>실제 도로 사용</Text>
-            <Text style={[T.cardBody, { marginTop: 2 }]}>
-              {options.realRoads ? '현재 위치 주변 실제 도로에서 달린다' : '합성 격자 도시에서 테스트한다'}
-            </Text>
-          </View>
-          <Toggle on={options.realRoads} onPress={() => set({ realRoads: !options.realRoads })} />
         </Glass>
 
         {/* 개체 밀도 */}
@@ -193,9 +197,9 @@ export default function HomeScreen({
         {!!error && <Text style={s.error}>{error}</Text>}
       </ScrollView>
 
-      <View style={s.footer}>
+      <View style={[s.footer, { bottom: safe.bottom }]}>
         <Cta label="런 시작" onPress={onStart} />
-        <GhostButton label="지난 기록" style={{ marginTop: 10 }} />
+        <GhostButton label="내 기록 보기" onPress={onOpenStats} style={{ marginTop: 10 }} />
       </View>
     </View>
   );
@@ -213,7 +217,7 @@ function Toggle({ on, onPress }: { on: boolean; onPress: () => void }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   glow: { position: 'absolute', top: 0, left: 0 },
-  content: { paddingTop: PAD.top, paddingHorizontal: PAD.screen, paddingBottom: 150 },
+  content: { paddingTop: PAD.top, paddingHorizontal: PAD.screen, paddingBottom: 190 },
 
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   place: { fontFamily: F.sb, fontSize: 12, color: A.t50, marginTop: 2 },
@@ -228,6 +232,10 @@ const s = StyleSheet.create({
   goalRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 7, marginBottom: 10 },
   goalNum: { fontFamily: F.eb, fontSize: 34, letterSpacing: -1, color: C.white },
   goalUnit: { fontFamily: F.sb, fontSize: 13, color: A.t45, marginBottom: 6 },
+  goalLeft: {
+    marginLeft: 'auto', marginBottom: 7,
+    fontFamily: F.eb, fontSize: 11.5, color: C.green,
+  },
 
   rowCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -261,7 +269,5 @@ const s = StyleSheet.create({
 
   error: { fontFamily: F.sb, fontSize: 12.5, color: C.redSoft, marginTop: 14, lineHeight: 18 },
 
-  footer: {
-    position: 'absolute', left: PAD.screen, right: PAD.screen, bottom: PAD.bottom,
-  },
+  footer: { position: 'absolute', left: PAD.screen, right: PAD.screen },
 });

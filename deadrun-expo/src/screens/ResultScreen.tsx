@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { A, C, F, PAD, R, T } from '../ui/theme';
+import { A, C, F, PAD, R, T, useSafePad } from '../ui/theme';
 import { AdButton, Cta, Eyebrow, GhostButton, Glass } from '../ui/components';
 import type { Snapshot } from '../game/game';
 
@@ -29,6 +29,7 @@ export default function ResultScreen({
   onRestart: () => void;
   onHome: () => void;
 }) {
+  const safe = useSafePad();
   const avgKmh = snap.sessionSec > 0 ? (snap.distanceM / snap.sessionSec) * 3.6 : 0;
 
   // 많이 잡은 순서. 한 마리도 못 잡았으면 목록 자체를 숨긴다.
@@ -104,7 +105,7 @@ export default function ResultScreen({
         </View>
       </ScrollView>
 
-      <View style={s.footer}>
+      <View style={[s.footer, { paddingBottom: safe.bottom }]}>
         <AdButton label="광고 보고 보상 2배" sub="준비 중 — 아직 동작하지 않습니다" />
         <Cta label="다시 달리기" onPress={onRestart} style={{ marginTop: 10 }} />
         <GhostButton label="홈으로" onPress={onHome} style={{ marginTop: 10 }} />
@@ -149,5 +150,5 @@ const s = StyleSheet.create({
   adSlotTitle: { fontFamily: F.b, fontSize: 11, color: A.t42, letterSpacing: 1.4 },
   adSlotSub: { fontFamily: F.sb, fontSize: 10, color: A.t34 },
 
-  footer: { paddingHorizontal: PAD.screen, paddingBottom: PAD.bottom, paddingTop: 4 },
+  footer: { paddingHorizontal: PAD.screen, paddingTop: 4 },
 });

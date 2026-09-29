@@ -8,6 +8,7 @@
  *  디자인을 고치면 여기부터 맞춘다 — 화면마다 흩어놓지 않는다.
  */
 import type { TextStyle, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** 키 이름은 유지하면서 값이 RN 스타일로 유효한지 검사받게 하는 도우미 */
 const text = <K extends Record<string, TextStyle>>(o: K): K => o;
@@ -139,3 +140,23 @@ export const SHADOW = view({
 
 /** 화면 공통 여백 */
 export const PAD = { screen: 22, top: 62, bottom: 30 } as const;
+
+/**
+ * 시스템 바를 피한 화면 여백.
+ *
+ *  안드로이드는 앱이 내비게이션 바(제스처 바 또는 3버튼) 아래까지 그려진다.
+ *  PAD 의 고정값만 쓰면 하단 버튼이 그 바에 깔려 눌리지 않는다.
+ *  기기가 알려주는 실제 여백과 디자인 값 중 큰 쪽을 쓴다 —
+ *  바가 없는 기기에서는 디자인대로, 있는 기기에서는 그만큼 더 띄운다.
+ */
+export function useSafePad() {
+  const insets = useSafeAreaInsets();
+  return {
+    top: Math.max(PAD.top, insets.top + 18),
+    bottom: Math.max(PAD.bottom, insets.bottom + 12),
+    /** 바로 그 바만큼만 — 이미 자체 여백이 있는 곳에 더해 쓴다 */
+    navBar: insets.bottom,
+    left: insets.left,
+    right: insets.right,
+  };
+}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop, LinearGradient as SvgGrad } from 'react-native-svg';
-import { A, C, F, PAD, R, T } from '../ui/theme';
+import { A, C, F, PAD, R, T, useSafePad } from '../ui/theme';
 import { AdButton, Divider, GhostButton, Glass } from '../ui/components';
 import type { Snapshot } from '../game/game';
 
@@ -25,6 +25,7 @@ export default function DeadScreen({
   onResult: () => void;
 }) {
   const { width, height } = useWindowDimensions();
+  const safe = useSafePad();
 
   return (
     <View style={s.root}>
@@ -69,7 +70,7 @@ export default function DeadScreen({
         </View>
       </Glass>
 
-      <View style={s.footer}>
+      <View style={[s.footer, { bottom: safe.bottom + 14 }]}>
         <AdButton
           label="광고 보고 그 자리에서 부활"
           sub="준비 중 — 아직 동작하지 않습니다"
@@ -99,5 +100,5 @@ const s = StyleSheet.create({
   },
   statUnit: { fontFamily: F.sb, fontSize: 11, color: A.t45 },
 
-  footer: { position: 'absolute', left: 26, right: 26, bottom: PAD.bottom + 14 },
+  footer: { position: 'absolute', left: 26, right: 26 },
 });

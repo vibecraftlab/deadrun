@@ -1,52 +1,43 @@
 import { Directory, File, Paths } from 'expo-file-system';
+import { adaptiveChaseKmh, loadRuns, weekKey } from './runRecords';
 
 /**
- * 러너 기록 — 홈 화면의 누적 거리·오늘 목표가 가짜 숫자가 되지 않게 저장한다.
+ * 러너 설정 — 기록 자체는 여기 없다.
  *
- *  기기에만 남는다(서버 없음). 파일이 깨지거나 없으면 0부터 시작한다.
- *  디자인(design/v2 Home)의 "누적 128.4km", "오늘 목표 3.0km"를 실제 값으로 채우기 위한 최소 기능이다.
+ *  거리·횟수 같은 값은 전부 런 기록(runRecords.ts)에서 계산한다.
+ *  같은 사실을 두 곳에 두면 반드시 어긋나기 때문이다.
+ *  여기 남는 것은 "사용자가 정하는 값"과 "주마다 한 번 굳혀야 하는 값"뿐이다.
  */
 
 const FILE = 'profile.json';
 
 export interface Profile {
-  /** 총 누적 거리(km) */
-  totalKm: number;
-  /** 완료한 런 수 */
-  runs: number;
-  /** 마지막 런 거리(km) */
-  lastRunKm: number;
-  /** 오늘 달린 거리(km) — 날짜가 바뀌면 0으로 돌아간다 */
-  todayKm: number;
-  /** todayKm 이 어느 날짜 것인지 (YYYY-MM-DD) */
-  todayDate: string;
-  /** 하루 목표(km) */
-  goalKm: number;
+  /**
+   * 주간 거리 목표(km). 하루가 아니라 주다 —
+   * 하루 목표는 못 지킨 날마다 실패를 만들지만 주 목표는 남은 날로 만회할 수 있다
+   * (design/v2 Training §1).
+   */
+  weeklyGoalKm: number;
+  /**
+   * 이번 주에 쓰기로 굳힌 러너 좀비 속도(km/h).
+   * 런마다 다시 계산하면 한 주 안에서도 난이도가 출렁인다 — 주에 한 번만 정한다.
+   */
+  chaseKmh: number;
+  /** 위 값을 정한 주 (그 주 월요일). 주가 바뀌면 다시 계산한다 */
+  chaseKmhWeek: string;
 }
 
-const EMPTY: Profile = {
-  totalKm: 0, runs: 0, lastRunKm: 0,
-  todayKm: 0, todayDate: '', goalKm: 3,
-};
-
-const today = (): string => {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
+const EMPTY: Profile = { weeklyGoalKm: 20, chaseKmh: 0, chaseKmhWeek: '' };
 
 const file = () => new File(Paths.document, FILE);
 
 export function loadProfile(): Profile {
   try {
     const f = file();
-    if (!f.exists) return { ...EMPTY, todayDate: today() };
-    const p = { ...EMPTY, ...(JSON.parse(f.textSync()) as Partial<Profile>) };
-    // 날짜가 바뀌었으면 오늘 기록만 초기화 (누적은 유지)
-    if (p.todayDate !== today()) { p.todayKm = 0; p.todayDate = today(); }
-    return p;
+    if (!f.exists) return { ...EMPTY };
+    return { ...EMPTY, ...(JSON.parse(f.textSync()) as Partial<Profile>) };
   } catch {
-    return { ...EMPTY, todayDate: today() };
+    return { ...EMPTY };
   }
 }
 
@@ -59,18 +50,19 @@ export function saveProfile(p: Profile): void {
   }
 }
 
-/** 런이 끝났을 때 호출 — 거리(m)를 받아 누적에 더한다 */
-export function recordRun(distanceM: number): Profile {
-  const km = distanceM / 1000;
+/**
+ * 이번 주에 쓸 러너 좀비 속도(km/h) — "기록이 난이도를 만든다" (design/v2 Training §3).
+ *
+ *  최근 4주 평균 속도 × 1.25 를 목표로 하되 주당 ±5% 안에서만 움직인다.
+ *  기록이 없으면 설정값(fallback)을 그대로 쓴다 — 처음 켠 사람에게 임의의 수를 들이밀지 않는다.
+ *  한 주 안에서는 값을 굳혀 둔다.
+ */
+export function weeklyChaseKmh(fallback: number, now = new Date()): number {
   const p = loadProfile();
-  const next: Profile = {
-    ...p,
-    totalKm: p.totalKm + km,
-    runs: p.runs + 1,
-    lastRunKm: km,
-    todayKm: p.todayKm + km,
-    todayDate: today(),
-  };
-  saveProfile(next);
+  const key = weekKey(now);
+  if (p.chaseKmhWeek === key && p.chaseKmh > 0) return p.chaseKmh;
+
+  const next = adaptiveChaseKmh(loadRuns(), fallback, p.chaseKmh || undefined, now);
+  saveProfile({ ...p, chaseKmh: next, chaseKmhWeek: key });
   return next;
 }

@@ -129,6 +129,27 @@ export class ZombieSimulation {
   /** 좀비를 도로 폭 안으로 제한 (건물 안으로 들어가지 않게) */
   roadHalfWidthM = 5;
   constrainToRoad = true;
+  /**
+   * 플레이어와 겹치지 않도록 두는 최소 거리(m).
+   *
+   * 예전에는 0이라 좀비가 플레이어 좌표에 정확히 올라탈 수 있었고, 그러면
+   * 좀비→플레이어 방위가 정의되지 않아 AR에서 카메라 원점에 그려졌다
+   * ("내 밑에 있다"의 원인). 몸이 차지하는 부피만큼은 떨어뜨린다.
+   *
+   * 반드시 attackRange 보다 작아야 한다 — 크면 영원히 사거리에 못 들어와
+   * 좀비가 때리지 못한다. 대입은 game.init 이 강제한다.
+   */
+  minPlayerSepM: number = Rules.attackStandoff;
+  /**
+   * 플레이어가 보호 구역 안에 있다 — 사거리에 들어와도 공격이 닿지 않는다.
+   * 좀비는 계속 쫓아와 건물 밖에 몰려 선다(추격 자체를 끊지는 않는다).
+   */
+  playerShielded = false;
+  /**
+   * 추격 중인 좀비가 도로를 벗어나 플레이어에게 직접 접근할 수 있다.
+   * 비안전 건물에서 유예 시간이 끝났을 때 켜진다 — 좀비가 건물로 밀고 들어오는 것.
+   */
+  allowBreach = false;
   /** 공격 사거리(m) — .env EXPO_PUBLIC_ATTACK_RANGE_M */
   attackRange: number = Rules.attackRange;
   /** 동시 추격 상한 — 초과분은 감지해도 추격에 들어가지 못한다 */
@@ -153,7 +174,7 @@ export class ZombieSimulation {
   detectAlwaysM = 20;
   /**
    * 시야 차단 판정. 켜면 좀비와 플레이어 사이 직선이 도로를 벗어날 때 감지되지 않는다.
-   * 도로 외 영역이 건물인 세계(합성 지도)에서는 이게 논리적으로 맞고,
+   * 도로 외 영역이 건물인 세계에서는 이게 논리적으로 맞고,
    * 부작용으로 "감지 = 직선이 뚫려 있음"이 보장되어 좀비가 뒤로 돌아갈 이유가 사라진다.
    */
   useLineOfSight = true;
@@ -164,6 +185,8 @@ export class ZombieSimulation {
    * 0이면 "자신의 인지 범위를 벗어나면 놓친다"는 뜻이 되어 좀비마다 값이 달라진다.
    */
   escapeDistance = 0;
+  /** 이탈 거리를 넘은 뒤 추격이 풀리기까지 버텨야 하는 시간(초) */
+  deAggroHoldSec: number = Rules.deAggroHoldSec;
 
   /**
    * 감지 판정: ① 같은 레이어 ② 감지 반경 안 ③ 시야각 안.
@@ -186,8 +209,34 @@ export class ZombieSimulation {
   /** 좀비 위치를 도로 폭 안으로 제한 */
   private clampZombie(z: Zombie) {
     if (!this.constrainToRoad) return;
+    // 건물 진입 허용 중인 추격자는 도로를 벗어날 수 있다.
+    // 배회 중인 좀비까지 풀면 온 동네가 건물을 통과해 걸어다닌다 — 추격자만이다.
+    if (this.allowBreach && z.state === 'chase') return;
     const c = this.graph.clampToRoad(z.pos, this.roadHalfWidthM);
     if (c) z.pos = c;
+  }
+
+  /**
+   * 플레이어와 겹치지 않게 밀어낸다. 도로 제한을 적용한 **뒤에** 부른다 —
+   * 순서가 반대면 도로 클램프가 방금 벌려놓은 간격을 도로 위로 되돌려 다시 겹친다.
+   *
+   * 완전히 같은 좌표(방향 없음)면 개체마다 고정된 방위로 밀어낸다.
+   * 난수를 쓰면 매 틱 방향이 바뀌어 좀비가 플레이어 주위에서 진동한다.
+   */
+  private separateFromPlayer(z: Zombie, playerPos: Vec2) {
+    const sep = this.minPlayerSepM;
+    if (sep <= 0) return;
+    const dx = z.pos.x - playerPos.x;
+    const dy = z.pos.y - playerPos.y;
+    const d = Math.hypot(dx, dy);
+    if (d >= sep) return;
+    if (d > 1e-4) {
+      const k = sep / d;
+      z.pos = { x: playerPos.x + dx * k, y: playerPos.y + dy * k };
+    } else {
+      const a = z.id * 2.399963; // 황금각 — id마다 다른 방위로 흩어진다
+      z.pos = { x: playerPos.x + Math.sin(a) * sep, y: playerPos.y + Math.cos(a) * sep };
+    }
   }
 
   /** 실제 적용되는 감지 반경(m) — 타입 기본값 × 배수, 상한으로 절단 */
@@ -328,13 +377,14 @@ export class ZombieSimulation {
           this.tickChase(z, dt, playerPos, d);
 
           // 이탈은 오직 거리로 판정한다. 감지 후에는 시야각과 무관하게 계속 쫓아오고,
-          // 이탈 거리를 넘어 3초 유지해야 놓친다 (GPS 노이즈로 깜빡이지 않도록 유예).
+          // 이탈 거리를 넘어 deAggroHoldSec 를 버텨야 놓친다
+          // (경계에서 GPS가 흔들려 추격이 붙었다 풀렸다 하지 않도록 두는 유예다).
           const escapeAt = this.escapeDistance > 0
             ? this.escapeDistance
             : this.detectRangeOf(z.type); // 0 = 자신의 인지 범위를 벗어나면 놓침
           if (!this.relentless && d > escapeAt) {
             z.deAggroTimer += dt;
-            if (z.deAggroTimer >= 3) {
+            if (z.deAggroTimer >= this.deAggroHoldSec) {
               z.state = 'search';
               z.searchTimer = Rules.searchDurationSec;
               z.searchCenter = playerPos;
@@ -345,7 +395,8 @@ export class ZombieSimulation {
           } else z.deAggroTimer = 0;
 
           // 근접 공격: 사거리 내에서 쿨다운마다 타격 (붙잡기/QTE 대체)
-          if (layerMatch && d <= this.attackRange) {
+          // 보호 구역 안이면 사거리에 들어와도 닿지 않는다 (안전 구역 / 비안전 건물 유예)
+          if (layerMatch && d <= this.attackRange && !this.playerShielded) {
             z.attackTimer -= dt;
             if (z.attackTimer <= 0) {
               z.attackTimer = Rules.attackCooldownSec;
@@ -357,6 +408,14 @@ export class ZombieSimulation {
           break;
         }
       }
+
+      /*
+        겹침 방지는 상태와 무관한 **불변식**이라 switch 밖에서 한 번만 적용한다.
+        분기 안에 넣었더니 상태가 바뀌는 틱(idle→chase는 break로 빠져나간다)과
+        경로가 없어 일찍 끝나는 배회 틱에서 빠져 좀비가 플레이어에 올라탄 채 남았다.
+        도로 클램프 뒤라야 한다 — 순서가 반대면 클램프가 간격을 도로 위로 되돌린다.
+      */
+      this.separateFromPlayer(z, playerPos);
     }
   }
 
@@ -426,11 +485,6 @@ export class ZombieSimulation {
     } else {
       z.faceTowards(z.pos, playerPos); // 붙어 서 있을 때도 플레이어를 응시
     }
-
-    // 경로 종점이 플레이어 위치라 그대로 두면 겹쳐 선다 → 최소 간격 유지
-    const dNow = dist(z.pos, playerPos);
-    if (dNow < Rules.attackStandoff && dNow > 1e-3)
-      z.pos = add(playerPos, mul(norm(sub(z.pos, playerPos)), Rules.attackStandoff));
 
     this.clampZombie(z); // 건물 안으로 들어가지 않게
   }

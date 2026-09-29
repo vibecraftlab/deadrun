@@ -3,7 +3,7 @@ import {
   View, Text, Image, StyleSheet, Animated, Easing, useWindowDimensions,
 } from 'react-native';
 import Svg, { Defs, Ellipse, Line, G, RadialGradient, Rect, Stop, LinearGradient as SvgGrad } from 'react-native-svg';
-import { A, C, F, T } from '../ui/theme';
+import { A, C, F, T, useSafePad } from '../ui/theme';
 import { GROUND_FRAC, SPRITE_BOX, sprite } from '../components/zombieArt';
 
 /**
@@ -25,6 +25,7 @@ const DH = 844;
 
 export default function SplashScreen({ holdMs = 1200 }: { holdMs?: number }) {
   const { width, height } = useWindowDimensions();
+  const safe = useSafePad();
   const kx = width / DW;
   const ky = height / DH;
   const prog = useRef(new Animated.Value(0)).current;
@@ -88,7 +89,7 @@ export default function SplashScreen({ holdMs = 1200 }: { holdMs?: number }) {
         </View>
       </View>
 
-      <View style={s.footer}>
+      <View style={[s.footer, { bottom: 84 + safe.navBar }]}>
         <Text style={[T.eyebrow, { textAlign: 'center' }]}>시작 준비</Text>
         <View style={s.track}>
           <Animated.View

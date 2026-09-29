@@ -34,15 +34,16 @@
   </div>
 
   <div class="glass" style="border-radius: 22px; padding: 16px; margin-top: 22px; position: relative">
-    <div class="eyebrow">오늘 목표</div>
+    <div class="eyebrow">이번 주 · 7주 연속 달성 중</div>
     <div style="display: flex; flex-direction: row; align-items: flex-end; gap: 6px; margin-top: 7px">
-      <div style="color: #fff; font-size: 34px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums">3.0</div>
-      <div style="color: rgba(255,255,255,0.45); font-size: 13px; font-weight: 600; margin-bottom: 6px">km 완주</div>
+      <div style="color: #fff; font-size: 34px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums">15.33</div>
+      <div style="color: rgba(255,255,255,0.45); font-size: 13px; font-weight: 600; margin-bottom: 6px">/ 20km</div>
+      <div style="margin-left: auto; margin-bottom: 7px; color: #7CFF5B; font-size: 11.5px; font-weight: 800">4.67km 남음</div>
     </div>
     <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.09); margin-top: 10px; overflow: hidden">
-      <div style="width: 42%; height: 6px; border-radius: 3px; background: linear-gradient(90deg,#2FD9FF,#5FE4FF)"></div>
+      <div style="width: 77%; height: 6px; border-radius: 3px; background: linear-gradient(90deg,#1795C2,#2FD9FF)"></div>
     </div>
-    <div style="color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 600; margin-top: 8px">1.26km 달림 · 보상 탄약 +10</div>
+    <div style="color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 600; margin-top: 8px">고강도 23분 40초 · 주 권고 75분의 32%</div>
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 18px">
@@ -78,7 +79,7 @@
 
   <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
     <div class="cta" style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 9px"><!--ICON:play--><span>런 시작</span></div>
-    <div class="ghost">지난 기록</div>
+    <div class="ghost">내 기록 보기</div>
   </div>
 </div>
 </x-dc>

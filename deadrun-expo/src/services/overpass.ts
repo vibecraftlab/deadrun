@@ -59,7 +59,7 @@ async function runQuery(query: string, timeoutMs: number): Promise<OverpassWay[]
   throw new Error('모든 Overpass 미러 실패:\n' + errors.join('\n'));
 }
 
-/** 보행 가능 도로망 (architecture §3.2). 전 미러 실패 시 throw → 합성 폴백 */
+/** 보행 가능 도로망 (architecture §3.2). 전 미러 실패 시 throw → 로딩 실패 */
 export async function fetchRoads(
   center: LatLon, radiusMeters: number, timeoutMs = Config.overpassTimeoutMs,
 ): Promise<RoadWay[]> {

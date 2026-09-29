@@ -6,8 +6,14 @@ export const Rules = {
   playerMaxHp: 100,
   stunSec: 2,
   maxChasers: 5,
-  deAggroDistMult: 2,
-  deAggroHoldSec: 20,
+  /**
+   * 추격 해제 유예(초). 인지 범위를 벗어난 뒤 이 시간을 버텨야 놓친다.
+   *
+   *  유예를 두는 이유는 GPS 노이즈다. 경계에서 좌표가 몇 m씩 흔들리면
+   *  추격이 붙었다 풀렸다를 반복한다. 넉넉히 두면 "따돌렸다"가 분명한 순간에만 풀린다.
+   *  .env 의 EXPO_PUBLIC_DEAGGRO_HOLD_SEC 로 덮어쓸 수 있다.
+   */
+  deAggroHoldSec: 60,
   searchDurationSec: 30,
   radarRange: 150,
   scanRange: 400,

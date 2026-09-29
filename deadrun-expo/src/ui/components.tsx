@@ -128,7 +128,9 @@ export function GhostButton({
 }
 
 /** 섹션 머리말 */
-export const Eyebrow = ({ children, style }: { children: string; style?: StyleProp<TextStyle> }) => (
+export const Eyebrow = (
+  { children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> },
+) => (
   <Text style={[T.eyebrow, style]}>{children}</Text>
 );
 

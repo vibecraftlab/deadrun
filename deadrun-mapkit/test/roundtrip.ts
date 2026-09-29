@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { LatLon, fromEnu, toEnu } from '../src/geo';
 import { decodePack, encodePack, RoadWay } from '../src/format';
+import { parseSlotWait, tidyName } from '../src/osm';
 import {
   DEFAULT_ZOOM, lonLatToTile, tileCenter, tileSideMeters, tilesAround, tilesForBBox,
 } from '../src/tiles';
@@ -122,6 +123,84 @@ mustThrow((() => { const b = bin.slice(); b[4] = 99; return b; })(), '미래 버
   disk.set(`v1/13/${t.x}/${t.y}.drmp`, bin.slice(0, 100));
   const r4 = await client2.loadAround(SEOUL, 500);
   check(!disk.has(`v1/13/${t.x}/${t.y}.drmp`) || r4.ways.length > 0, '깨진 캐시 삭제');
+
+
+// ── 건물 이름 (포맷 v2) ────────────────────────────────────────
+//
+//  이 파일은 앱의 src/core/mapPack.ts 와 **바이트 단위로 같아야** 한다.
+//  어긋나면 조용히 깨진 지도로 플레이하게 되므로 여기서 지킨다.
+{
+  const sq = (x: number, y: number) => [
+    { x, y }, { x: x + 10, y }, { x: x + 10, y: y + 10 }, { x, y: y + 10 }, { x, y },
+  ];
+  const polys = [sq(0, 0), sq(50, 0), sq(100, 0), sq(150, 0)];
+  // 같은 이름이 둘, 이름 없는 것 하나 — 사전이 실제로 합치는지 본다
+  const names = ['서울갈산초등학교', undefined, '101동', '101동'];
+  const bin2 = encodePack(origin, ways, polys, { tile: t, buildingNames: names });
+  const got = decodePack(bin2);
+
+  check(got.buildingNames.length === polys.length, '이름 배열 길이 = 건물 수');
+  check(got.buildingNames[0] === '서울갈산초등학교', `첫 건물 이름 (${got.buildingNames[0]})`);
+  check(got.buildingNames[1] === undefined, '이름 없는 건물은 undefined');
+  check(got.buildingNames[2] === '101동' && got.buildingNames[3] === '101동',
+    '같은 이름이 둘 다 복원된다');
+
+  // 사전으로 합쳤으니 "101동"의 바이트열은 파일에 한 번만 있어야 한다
+  const needle = new TextEncoder().encode('101동');
+  let hits = 0;
+  for (let i = 0; i + needle.length <= bin2.length; i++) {
+    let ok = true;
+    for (let j = 0; j < needle.length; j++) if (bin2[i + j] !== needle[j]) { ok = false; break; }
+    if (ok) hits++;
+  }
+  check(hits === 1, `같은 이름은 사전에 한 번만 저장된다 (발견 ${hits}회)`);
+
+  // 이름을 안 주면 v1 과 같은 크기 + 최소한의 꼬리만 붙는다
+  const noName = encodePack(origin, ways, polys, { tile: t });
+  check(decodePack(noName).buildingNames.every(n => n === undefined),
+    '이름을 안 주면 전부 undefined');
+
+  // 좌표는 이름이 붙어도 그대로여야 한다
+  const a = decodePack(noName).buildings[0][0];
+  const b = got.buildings[0][0];
+  check(Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.y - b.y) < 1e-9, '이름이 좌표를 건드리지 않는다');
+
+  // 영문 병기 다듬기
+  check(tidyName('명덕고등학교 (Myung Duk High School)') === '명덕고등학교', '영문 병기는 떼어낸다');
+  check(tidyName('제1동(별관)') === '제1동(별관)', '한글 괄호는 그대로 둔다');
+  check(tidyName('  강서구청  ') === '강서구청', '앞뒤 공백 제거');
+}
+
+
+// ── Overpass 슬롯 대기 파싱 ────────────────────────────────────
+//
+//  overpass-api.de 는 동시 질의 슬롯이 2개뿐이고, 넘기면 429다.
+//  그냥 몇 초 뒤 다시 던지면 또 429이므로 /status 가 알려주는 만큼 기다린다.
+//  실제 응답 형식으로 파싱을 지킨다 — 라이브에서 429를 재현하기는 어렵기 때문이다.
+{
+  const AVAILABLE = [
+    'Connected as: 2093101331',
+    'Current time: 2026-09-15T05:15:12Z',
+    'Announced endpoint: gall.openstreetmap.de/',
+    'Rate limit: 2',
+    '2 slots available now.',
+    'Currently running queries (pid, space limit, time limit, start time):',
+  ].join('\n');
+
+  const BUSY = [
+    'Connected as: 2093101331',
+    'Current time: 2026-09-15T05:12:00Z',
+    'Rate limit: 2',
+    'Slot available after: 2026-09-15T05:13:22Z, in 82 seconds.',
+    'Slot available after: 2026-09-15T05:12:42Z, in 42 seconds.',
+  ].join('\n');
+
+  check(parseSlotWait(AVAILABLE) === 0, '슬롯이 남아 있으면 0초');
+  check(parseSlotWait(BUSY) === 42, `가장 빨리 나는 슬롯을 고른다 (${parseSlotWait(BUSY)}초)`);
+  check(parseSlotWait('1 slot available now.') === 0, '단수형 "1 slot" 도 인식');
+  check(parseSlotWait('뭔가 이상한 응답') === null, '알 수 없으면 null — 멋대로 기다리지 않는다');
+  check(parseSlotWait('') === null, '빈 응답도 null');
+}
 
   console.log(fail === 0 ? '\n=== 전체 통과 ===' : `\n=== 실패 ${fail}건 ===`);
   process.exit(fail === 0 ? 0 : 1);

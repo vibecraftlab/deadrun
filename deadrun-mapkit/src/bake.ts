@@ -22,7 +22,10 @@ export interface BakeOptions extends FetchOptions {
   overlapM?: number;
   /** 이미 만들어진 타일은 건너뛴다 — 중단 후 이어서 굽기 */
   resume?: boolean;
-  /** 타일 사이 대기(ms). 공용 Overpass에 대한 예의이자 504 회피 */
+  /**
+   * 타일 사이 대기(ms). 공용 Overpass에 대한 예의이자 429 회피다.
+   * overpass-api.de 는 동시 질의 슬롯이 2개뿐이고, 타일 한 장이 질의를 2번(도로+건물) 쓴다.
+   */
   politeDelayMs?: number;
 }
 
@@ -62,9 +65,12 @@ export async function bakeTile(t: TileId, opt: BakeOptions): Promise<TileResult>
 
   const ways: RoadWay[] = await fetchRoads(bbox, origin, opt);
   let builds: { x: number; y: number }[][] = [];
+  let buildingNames: (string | undefined)[] = [];
   if (opt.includeBuildings !== false && ways.length > 0) {
     try {
-      builds = await fetchBuildings(bbox, origin, opt);
+      const b = await fetchBuildings(bbox, origin, opt);
+      builds = b.polys;
+      buildingNames = b.names;
     } catch (e) {
       opt.log?.(`    건물 실패(도로만 저장): ${String(e)}`);
     }
@@ -72,7 +78,7 @@ export async function bakeTile(t: TileId, opt: BakeOptions): Promise<TileResult>
 
   if (ways.length === 0) return { tile: t, file: rel, bytes: 0, roads: 0, buildings: 0, skipped: 'empty' };
 
-  const bin = encodePack(origin, ways, builds, { tile: t });
+  const bin = encodePack(origin, ways, builds, { tile: t, buildingNames });
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, bin);
   return { tile: t, file: rel, bytes: bin.byteLength, roads: ways.length, buildings: builds.length };

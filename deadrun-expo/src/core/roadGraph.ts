@@ -7,12 +7,26 @@ export interface RoadWay {
   spawnAllowed: boolean;
 }
 
+/**
+ * 도로 위계 — 지도에 어떻게 그릴지를 정한다 (design/v2 osm-export.ts 의 3단 분류).
+ *  walk 는 좀비가 스폰되는 길이기도 하다.
+ */
+export type RoadClass = 'arterial' | 'local' | 'walk';
+
+const ARTERIAL = new Set(['primary', 'secondary', 'tertiary']);
+const WALK = new Set(['footway', 'path', 'steps', 'cycleway', 'pedestrian', 'track']);
+
+export const roadClass = (highway: string): RoadClass =>
+  ARTERIAL.has(highway) ? 'arterial' : WALK.has(highway) ? 'walk' : 'local';
+
 export interface Edge {
   a: number;
   b: number;
   len: number;
   layer: number;
   spawnAllowed: boolean;
+  /** 보도인지 차도인지 — 지도 표현용. 판정에는 쓰지 않는다 */
+  cls: RoadClass;
 }
 
 const NODE_QUANT = 0.5; // 0.5m 격자로 노드 병합
@@ -35,7 +49,7 @@ export class RoadGraph {
       let prev = g.getOrAddNode(w.points[0]);
       for (let i = 1; i < w.points.length; i++) {
         const cur = g.getOrAddNode(w.points[i]);
-        if (cur !== prev) g.addEdge(prev, cur, w.layer, w.spawnAllowed);
+        if (cur !== prev) g.addEdge(prev, cur, w.layer, w.spawnAllowed, roadClass(w.highway));
         prev = cur;
       }
     }
@@ -53,8 +67,10 @@ export class RoadGraph {
     return id;
   }
 
-  private addEdge(a: number, b: number, layer: number, spawnAllowed: boolean) {
-    const e: Edge = { a, b, len: dist(this.nodes[a], this.nodes[b]), layer, spawnAllowed };
+  private addEdge(
+    a: number, b: number, layer: number, spawnAllowed: boolean, cls: RoadClass,
+  ) {
+    const e: Edge = { a, b, len: dist(this.nodes[a], this.nodes[b]), layer, spawnAllowed, cls };
     const idx = this.edges.length;
     this.edges.push(e);
     this.nodeEdges[a].push(idx);

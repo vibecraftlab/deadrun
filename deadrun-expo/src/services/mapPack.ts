@@ -11,7 +11,7 @@ import { Config } from '../config';
  *  한 번 받으면 기기에 남으므로 두 번째 실행부터는 네트워크가 없어도 플레이된다.
  *
  *  실패해도 예외를 던지지 않고 null을 돌려준다 —
- *  호출부(game.init)가 Overpass → 합성 도시 순으로 폴백한다.
+ *  호출부(game.init)가 Overpass로 넘어가고, 그것도 실패하면 게임을 시작하지 않는다.
  *
  *  ── 매니페스트 두 가지를 모두 읽는다 ─────────────────────────
  *   · 타일형 (deadrun-mapkit) : { zoom, tilePath, tiles: { "13/6982/3172": 1234 } }
@@ -49,6 +49,8 @@ const kb = (n: number) => (n < 1024 ? `${n}B` : `${Math.round(n / 1024)}KB`);
 export interface LoadedMap {
   ways: RoadWay[];
   buildings: Vec2[][];
+  /** buildings 와 같은 순서·길이. 이름 없는 건물은 undefined */
+  buildingNames: (string | undefined)[];
   /** 어디서 왔는지 — 화면 표시용 */
   source: string;
 }
@@ -199,6 +201,7 @@ async function loadTiles(
 
   const ways: RoadWay[] = [];
   const buildings: Vec2[][] = [];
+  const buildingNames: (string | undefined)[] = [];
   let got = 0, cached = 0, downloaded = 0;
 
   for (let i = 0; i < plan.length; i++) {
@@ -238,6 +241,7 @@ async function loadTiles(
       const pack = decodeMapPack(data, playOrigin);
       ways.push(...pack.ways);
       buildings.push(...pack.buildings);
+      buildingNames.push(...pack.buildingNames);
       got++;
     } catch (e) {
       console.warn(`[DEADRUN] 타일 ${tileKey(t)} 해독 실패 — ${why(e)}`);
@@ -255,7 +259,7 @@ async function loadTiles(
   console.log(`[DEADRUN] 지도 타일 ${got}장 (캐시 ${cached}) — 도로 ${ways.length} · 건물 ${buildings.length}`);
   onProgress?.(`지도 ${got}장 · 도로 ${ways.length.toLocaleString()}개`, 100);
   return {
-    ways, buildings,
+    ways, buildings, buildingNames,
     source: `지도 타일 ${got}장 · ${kb(totalBytes)} (내려받음 ${downloaded})`,
   };
 }
@@ -288,7 +292,10 @@ async function loadSinglePack(
       throw new Error(`크기 불일치 ${data.byteLength}/${best.bytes}`);
     const pack = decodeMapPack(data, playOrigin);
     console.log(`[DEADRUN] 지도 팩 ${best.name} — 도로 ${pack.ways.length} · 건물 ${pack.buildings.length}`);
-    return { ways: pack.ways, buildings: pack.buildings, source: `지도 팩 ${best.name}` };
+    return {
+      ways: pack.ways, buildings: pack.buildings, buildingNames: pack.buildingNames,
+      source: `지도 팩 ${best.name}`,
+    };
   } catch (e) {
     console.warn(`[DEADRUN] 지도 팩 로드 실패 — ${why(e)}`);
     try { if (local.exists) local.delete(); } catch { /* 무시 */ }

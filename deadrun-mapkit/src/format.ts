@@ -17,7 +17,7 @@
  *  ── 레이아웃 ────────────────────────────────────────────────
  *   헤더 40B
  *     0  magic 'DRMP'      u32   0x504d5244
- *     4  version           u8    = 1
+ *     4  version           u8    = 2 (v1 도 읽는다 — 이름만 없다)
  *     5  flags             u8
  *     6  quantMm           u16   좌표 1단위의 mm (기본 250)
  *     8  originLat         f64   타일 기준점 위도
@@ -31,12 +31,24 @@
  *     u16 pointCount
  *     i32 x0, i32 y0
  *     (n-1) × (i16 dx, i16 dy)
+ *   건물 이름 (v2부터. v1 파일에는 없다)
+ *     u16 dictCount
+ *     dictCount × ( u8 byteLen, utf8 bytes )       사전
+ *     buildingCount × u16                          건물별 사전 색인 (0xFFFF = 이름 없음)
+ *
+ *  ── 이름을 사전으로 담는 이유 ───────────────────────────────
+ *  같은 이름이 여러 건물에 걸린다(아파트 "101동"~"110동", 같은 학교의 여러 동).
+ *  실측(서울 화곡 반경 1km): 이름 있는 건물 533개인데 서로 다른 이름은 406개다.
+ *  문자열을 그대로 넣으면 6.6KB, 사전+색인이면 7.3KB로 비슷하지만,
+ *  도로까지 넣으면 차이가 커진다(도로는 280개 중 서로 다른 이름이 80개뿐이다).
+ *  지금은 건물 이름만 담는다 — 러너에게 쓸모 있는 것은 "내 옆 건물이 무엇인가"지
+ *  도로 이름이 아니고, 도로 이름까지 뿌리면 화면이 글자 범벅이 된다.
  */
 import { LatLon, Vec2, toEnu, fromEnu } from './geo';
 import { TileId } from './tiles';
 
 export const MAGIC = 0x504d5244;
-export const VERSION = 1;
+export const VERSION = 2;
 const HEADER = 40;
 const BUILDING_KIND = 255;
 
@@ -65,26 +77,59 @@ export interface MapPack {
   tile?: TileId;
   ways: RoadWay[];
   buildings: Vec2[][];
+  /** buildings 와 같은 순서·길이. 이름이 없으면 undefined (v1 팩은 전부 undefined) */
+  buildingNames: (string | undefined)[];
 }
 
-interface Rec { kind: number; layer: number; points: Vec2[] }
+interface Rec { kind: number; layer: number; points: Vec2[]; name?: string }
+
+/** 이름 하나를 사전에 담을 수 있는 최대 바이트 (길이를 u8로 적는다) */
+const NAME_MAX_BYTES = 255;
+const NO_NAME = 0xffff;
+
+const utf8 = new TextEncoder();
+const utf8dec = new TextDecoder();
 
 export function encodePack(
   origin: LatLon, ways: RoadWay[], buildings: Vec2[][],
-  opts: { quantMm?: number; tile?: TileId } = {},
+  opts: { quantMm?: number; tile?: TileId; buildingNames?: (string | undefined)[] } = {},
 ): Uint8Array {
   const quantMm = opts.quantMm ?? 250;
   const q = quantMm / 1000;
+  const names = opts.buildingNames ?? [];
   const recs: Rec[] = [
     ...ways.map(w => ({
       kind: Math.max(0, HIGHWAY_KINDS.indexOf(w.highway as HighwayKind)),
       layer: w.layer, points: w.points,
     })),
-    ...buildings.map(p => ({ kind: BUILDING_KIND, layer: 0, points: p })),
+    ...buildings.map((p, i) => ({
+      kind: BUILDING_KIND, layer: 0, points: p, name: names[i],
+    })),
   ].filter(r => r.points.length >= 2);
+
+  // 이름 사전 — 레코드 걸러내기가 끝난 뒤의 건물 순서를 그대로 따른다
+  const builds = recs.filter(r => r.kind === BUILDING_KIND);
+  const dict: string[] = [];
+  const dictIdx = new Map<string, number>();
+  const refs: number[] = builds.map(r => {
+    const n = r.name;
+    if (!n || utf8.encode(n).length > NAME_MAX_BYTES) return NO_NAME;
+    let i = dictIdx.get(n);
+    if (i === undefined) {
+      if (dict.length >= NO_NAME) return NO_NAME; // 사전이 가득 찼다 (실제로는 안 일어난다)
+      i = dict.length;
+      dict.push(n);
+      dictIdx.set(n, i);
+    }
+    return i;
+  });
+  const dictBytes = dict.map(n => utf8.encode(n));
 
   let size = HEADER;
   for (const r of recs) size += 12 + (r.points.length - 1) * 4;
+  size += 2;                                            // dictCount
+  for (const b of dictBytes) size += 1 + b.length;      // 사전
+  size += refs.length * 2;                              // 건물별 색인
   const ab = new ArrayBuffer(size);
   const dv = new DataView(ab);
 
@@ -120,7 +165,16 @@ export function encodePack(
       px = cx; py = cy;
     }
   }
-  return new Uint8Array(ab);
+
+  // 이름 사전 + 건물별 색인
+  const bytes = new Uint8Array(ab);
+  dv.setUint16(o, dictBytes.length, true); o += 2;
+  for (const b of dictBytes) {
+    dv.setUint8(o, b.length); o += 1;
+    bytes.set(b, o); o += b.length;
+  }
+  for (const r of refs) { dv.setUint16(o, r, true); o += 2; }
+  return bytes;
 }
 
 /**
@@ -132,7 +186,8 @@ export function decodePack(data: Uint8Array, playOrigin?: LatLon): MapPack {
   const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
   if (dv.getUint32(0, true) !== MAGIC) throw new Error('지도 팩 형식이 아닙니다');
   const version = dv.getUint8(4);
-  if (version !== VERSION) throw new Error(`지원하지 않는 팩 버전 ${version} (이 도구는 ${VERSION})`);
+  // v1 파일도 그대로 읽는다 — 이름이 없을 뿐이다. 이미 구운 타일을 버리지 않기 위해서다.
+  if (version > VERSION) throw new Error(`지원하지 않는 팩 버전 ${version} (이 도구는 ${VERSION})`);
 
   const q = dv.getUint16(6, true) / 1000;
   const origin: LatLon = { lat: dv.getFloat64(8, true), lon: dv.getFloat64(16, true) };
@@ -149,6 +204,7 @@ export function decodePack(data: Uint8Array, playOrigin?: LatLon): MapPack {
 
   const ways: RoadWay[] = [];
   const buildings: Vec2[][] = [];
+  const buildingNames: (string | undefined)[] = [];
   const total = nRoad + nBuild;
   let o = HEADER;
   let read = 0;
@@ -178,5 +234,25 @@ export function decodePack(data: Uint8Array, playOrigin?: LatLon): MapPack {
   if (read !== total)
     throw new Error(`지도 팩이 잘렸습니다 (${read}/${total} 레코드) — 다시 받아야 합니다`);
 
-  return { origin, tile, ways, buildings };
+  /*
+    건물 이름 (v2부터). v1 팩이나, 어떤 이유로든 뒤가 잘린 파일이면 이름 없이 넘어간다.
+    좌표는 이미 다 읽었으므로 이름이 없다고 지도를 못 쓰게 만들 이유가 없다.
+  */
+  if (version >= 2 && o + 2 <= data.byteLength) {
+    const dictCount = dv.getUint16(o, true); o += 2;
+    const dict: string[] = [];
+    for (let i = 0; i < dictCount && o < data.byteLength; i++) {
+      const len = dv.getUint8(o); o += 1;
+      if (o + len > data.byteLength) break;
+      dict.push(utf8dec.decode(data.subarray(o, o + len))); o += len;
+    }
+    for (let i = 0; i < buildings.length; i++) {
+      if (o + 2 > data.byteLength) break;
+      const idx = dv.getUint16(o, true); o += 2;
+      buildingNames[i] = idx === NO_NAME ? undefined : dict[idx];
+    }
+  }
+  while (buildingNames.length < buildings.length) buildingNames.push(undefined);
+
+  return { origin, tile, ways, buildings, buildingNames };
 }

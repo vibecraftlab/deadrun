@@ -119,7 +119,9 @@ const server = http.createServer(async (req, res) => {
         tiles, bbox, zoom, version, outDir: OUT_DIR,
         includeBuildings: b.buildings !== false,
         resume: b.resume !== false,
-        delayMs: Number(b.delayMs ?? 400),
+        // 타일 사이 대기. overpass-api.de 는 동시 질의 슬롯이 2개뿐이라
+        // 짧게 두면 429가 난다 (실측: 몇 초 안에 3번 두드리면 세 번째가 429).
+        delayMs: Number(b.delayMs ?? 1200),
       });
       return json(res, 200, { jobId: job.id });
     }

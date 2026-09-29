@@ -27,7 +27,7 @@ export const Config = {
   /**
    * Overpass 실시간 조회 사용 여부.
    * false로 두면 OSM 서버를 전혀 부르지 않고 구운 지도 파일만 쓴다.
-   * (시작 화면의 "OSM 실제 도로" 토글과는 별개 — 그쪽은 합성 도시 전환용)
+   * 이 경우 팩을 못 받으면 게임이 시작되지 않는다 (합성 폴백은 2026-09-16 폐기).
    */
   useOverpassApi: bool(process.env.EXPO_PUBLIC_USE_OVERPASS_API, true),
   /**
@@ -52,6 +52,22 @@ export const Config = {
   buildingTimeoutMs: num(process.env.EXPO_PUBLIC_BUILDING_TIMEOUT_MS, 25000),
   /** 그릴 건물 수 상한 — 초과분은 버린다 (렌더 부하 보호) */
   maxBuildings: num(process.env.EXPO_PUBLIC_MAX_BUILDINGS, 1500),
+
+  // ── 안전 구역 (2026-09-16) ──
+  /** 안전 구역(녹색 건물) 비율 0~1. 좌표 해시로 결정론적으로 찍는다. 0이면 기능 off */
+  safeZoneRatio: num(process.env.EXPO_PUBLIC_SAFE_ZONE_RATIO, 0.15),
+  /**
+   * 안전 구역 안에서 보호받는 최대 시간(초). 0이면 무제한.
+   * 무제한으로 두면 "녹색 건물에 서서 버티기"가 최적 전략이 된다 (ADR-018과 충돌).
+   */
+  safeZoneMaxSec: num(process.env.EXPO_PUBLIC_SAFE_ZONE_MAX_SEC, 300),
+  /** 안전 구역이 아닌 건물에 들어갔을 때, 좀비가 밀고 들어오기까지의 시간(초) */
+  unsafeBuildingBreachSec: num(process.env.EXPO_PUBLIC_UNSAFE_BREACH_SEC, 180),
+  /**
+   * 구역 진입·이탈 판정 유예(초). GPS 오차가 ±5~15m라 경계에 서 있으면
+   * 들락날락하며 보호가 깜빡인다. 이만큼 연속으로 유지돼야 구역이 바뀐다.
+   */
+  zoneGraceSec: num(process.env.EXPO_PUBLIC_ZONE_GRACE_SEC, 3),
   defaultLat: num(process.env.EXPO_PUBLIC_DEFAULT_LAT, 37.5266),
   defaultLon: num(process.env.EXPO_PUBLIC_DEFAULT_LON, 126.9244),
   playRadiusM: num(process.env.EXPO_PUBLIC_PLAY_RADIUS_M, 1000),
@@ -83,6 +99,23 @@ export const Config = {
   attackRangeM: num(process.env.EXPO_PUBLIC_ATTACK_RANGE_M, 0.5),
   /** AR 뷰 최소 렌더 거리(m) — 이보다 가까운 좀비도 이 거리에 서 있는 것처럼 그린다 */
   arMinDistanceM: num(process.env.EXPO_PUBLIC_AR_MIN_DISTANCE_M, 4),
+  /**
+   * AR 표시 최소 분리 거리(m) — 좀비가 실제로 0m까지 붙어도 화면에서는
+   * 이보다 가까이 그리지 않는다. 카메라 원점에 겹쳐 그려지면 형체가 사라진다.
+   */
+  arMinSeparationM: num(process.env.EXPO_PUBLIC_AR_MIN_SEPARATION_M, 0.7),
+  /**
+   * AR 눈높이 정렬 반경(m) — 이 안의 좀비는 화면 중앙(조준선) 높이로 끌어올린다.
+   * 코앞의 좀비가 발밑에 깔려 보이지 않게 하려는 것. 이 거리의 2배에서 0으로 풀린다.
+   */
+  arEyeLevelRadiusM: num(process.env.EXPO_PUBLIC_AR_EYE_LEVEL_RADIUS_M, 2),
+  /** AR 카메라(눈) 높이(m) — 좀비 눈높이 정렬의 기준 */
+  arEyeHeightM: num(process.env.EXPO_PUBLIC_AR_EYE_HEIGHT_M, 1.6),
+  /**
+   * 좀비가 플레이어에게 붙을 수 있는 최소 거리(m) — 시뮬 차원의 겹침 방지.
+   * 공격 사거리보다 반드시 작게 잡힌다(game.init에서 강제) — 안 그러면 영원히 못 때린다.
+   */
+  zombieMinSeparationM: num(process.env.EXPO_PUBLIC_ZOMBIE_MIN_SEPARATION_M, 0.4),
   /** AR 나침반·자이로 평활 강도(1/s) — 낮을수록 화면 흔들림이 적고 반응이 늦다 */
   arSensorSmoothing: num(process.env.EXPO_PUBLIC_AR_SENSOR_SMOOTHING, 6),
   /** AR 좀비 위치 보간 강도(1/s) */
@@ -112,7 +145,13 @@ export const Config = {
   /** 동시 추격 상한 (GDD 기본 5 — 크게 잡으면 감지한 좀비가 전부 몰려온다) */
   maxChasers: num(process.env.EXPO_PUBLIC_MAX_CHASERS, 40),
   /** 집요한 추격 — 한 번 감지하면 거리를 벌려도 포기하지 않는다 */
-  relentlessChase: bool(process.env.EXPO_PUBLIC_RELENTLESS_CHASE, true),
+  /**
+   * 감지하면 절대 포기하지 않는다. 켜면 아래 해제 유예가 무의미해진다.
+   * 기본값을 false 로 둔다 — 따돌릴 수 없는 추격은 러닝 게임의 인터벌 구조와 맞지 않는다.
+   */
+  relentlessChase: bool(process.env.EXPO_PUBLIC_RELENTLESS_CHASE, false),
+  /** 인지 범위를 벗어난 뒤 추격이 풀리기까지 버텨야 하는 시간(초) */
+  deAggroHoldSec: num(process.env.EXPO_PUBLIC_DEAGGRO_HOLD_SEC, 60),
   /**
    * 감지 범위 배수. 기본 감지범위(40~90m)는 레이더 표시 범위(150m)보다 짧아서
    * 지도에 보이는 좀비 상당수가 아직 못 본 상태로 배회한다.
@@ -141,6 +180,4 @@ export const Config = {
   testZombieCount: num(process.env.EXPO_PUBLIC_TEST_ZOMBIE_COUNT, 3),
   /** 테스트 스폰 거리(m) — 내 주변 이 거리에 고르게 배치 */
   testSpawnDistanceM: num(process.env.EXPO_PUBLIC_TEST_SPAWN_DISTANCE_M, 50),
-  /** 시작 화면의 "OSM 실제 도로" 기본값 */
-  useOverpass: bool(process.env.EXPO_PUBLIC_USE_OVERPASS, true),
 } as const;

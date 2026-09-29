@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Stop, LinearGradient as SvgGrad } from 'react-native-svg';
-import { A, C, F } from '../ui/theme';
+import { A, C, F, useSafePad } from '../ui/theme';
 import { Bar } from '../ui/components';
 import type { LoadStep } from '../game/game';
 
@@ -23,6 +23,7 @@ export default function LoadingScreen({
   source?: string;
 }) {
   const { width, height } = useWindowDimensions();
+  const safe = useSafePad();
   const cx = width / 2;
   const cy = height * 0.5;
   const spin = useRef(new Animated.Value(0)).current;
@@ -134,7 +135,7 @@ export default function LoadingScreen({
         </Text>
       </View>
 
-      <View style={s.footer}>
+      <View style={[s.footer, { bottom: 52 + safe.navBar }]}>
         <Text style={s.footerText}>
           달리기 전에 주변을 한 번 둘러보세요.{'\n'}차도와 교차로에서는 화면을 보지 않습니다.
         </Text>

@@ -7,7 +7,7 @@
   "main": "src/index.ts",
   "scripts": {
     "mapkit": "tsx bin/mapkit.ts",
-    "test": "tsx test/roundtrip.ts",
+    "test": "tsx test/roundtrip.ts && tsx test/crosscheck.ts",
     "typecheck": "tsc --noEmit",
     "admin": "tsx server.ts"
   },

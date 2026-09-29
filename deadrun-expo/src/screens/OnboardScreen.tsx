@@ -3,7 +3,7 @@ import {
   View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { A, C, F, PAD, R, T } from '../ui/theme';
+import { A, C, F, PAD, R, T, useSafePad } from '../ui/theme';
 import { Cta, Glass } from '../ui/components';
 
 /**
@@ -22,6 +22,7 @@ const RULES = [
 
 export default function OnboardScreen({ onDone }: { onDone: () => void }) {
   const { width } = useWindowDimensions();
+  const safe = useSafePad();
   const [agreed, setAgreed] = useState(false);
 
   return (
@@ -109,7 +110,7 @@ export default function OnboardScreen({ onDone }: { onDone: () => void }) {
         </View>
       </ScrollView>
 
-      <View style={s.footer}>
+      <View style={[s.footer, { paddingBottom: safe.bottom }]}>
         <Pressable style={s.checkRow} onPress={() => setAgreed(a => !a)}>
           <View style={[s.checkbox, agreed && s.checkboxOn]}>
             {agreed && (
@@ -162,7 +163,7 @@ const s = StyleSheet.create({
   bullet: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.red, marginTop: 6 },
   ruleText: { fontFamily: F.r, fontSize: 11.5, lineHeight: 17, color: 'rgba(255,255,255,0.78)', flex: 1 },
 
-  footer: { paddingHorizontal: PAD.screen, paddingBottom: PAD.bottom, paddingTop: 6 },
+  footer: { paddingHorizontal: PAD.screen, paddingTop: 6 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   checkbox: {
     width: 26, height: 26, borderRadius: 8, borderWidth: 1.5, borderColor: A.t16,
